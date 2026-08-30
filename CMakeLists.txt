@@ -8,11 +8,32 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(LOB_ENABLE_ASAN "Enable address sanitizer" OFF)
+option(LOB_ENABLE_UBSAN "Enable undefined behavior sanitizer" OFF)
+option(LOB_ENABLE_TSAN "Enable thread sanitizer" OFF)
 option(LOB_BUILD_FUZZER "Build the libFuzzer differential target" OFF)
+
+set(LOB_WARNING_FLAGS
+  -Wall
+  -Wextra
+  -Wpedantic
+  -Wconversion
+  -Wshadow
+  -Werror=return-type
+)
 
 if(LOB_ENABLE_ASAN)
   add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
   add_link_options(-fsanitize=address)
+endif()
+
+if(LOB_ENABLE_UBSAN)
+  add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=undefined)
+endif()
+
+if(LOB_ENABLE_TSAN)
+  add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=thread)
 endif()
 
 add_library(orda_core
@@ -20,17 +41,12 @@ add_library(orda_core
   src/pooled_order_book.cpp
   src/ladder_order_book.cpp
   src/event_parser.cpp
+  src/binary_event_codec.cpp
 )
 
 target_include_directories(orda_core PUBLIC src)
 
-target_compile_options(orda_core PRIVATE
-  -Wall
-  -Wextra
-  -Wpedantic
-  -Wconversion
-  -Wshadow
-)
+target_compile_options(orda_core PRIVATE ${LOB_WARNING_FLAGS})
 
 add_executable(orda_replay src/replay_main.cpp)
 target_link_libraries(orda_replay PRIVATE orda_core)
@@ -63,6 +79,7 @@ add_executable(orda_tests
 )
 target_link_libraries(orda_tests PRIVATE orda_core)
 target_link_libraries(orda_tests PRIVATE Threads::Threads)
+target_compile_options(orda_tests PRIVATE ${LOB_WARNING_FLAGS})
 
 include(CTest)
 enable_testing()

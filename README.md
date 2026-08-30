@@ -1,5 +1,7 @@
 # orda-book
 
+[![CI](https://github.com/stra-ta/orda-book/actions/workflows/ci.yml/badge.svg)](https://github.com/stra-ta/orda-book/actions/workflows/ci.yml)
+
 A single-threaded C++17 limit-order matching engine and replay lab.
 
 ![Order ingress, matching, backends, trades, and evidence](docs/ARCHITECTURE_OVERVIEW.svg)
@@ -31,3 +33,16 @@ It is not a claim about the current commit, a production exchange, or a portable
 - [Correctness campaign](docs/CORRECTNESS_CAMPAIGN.md)
 - [Benchmark evidence](docs/BENCHMARK_RESULTS.md)
 - [Backend decision](docs/BACKEND_DECISION.md)
+
+## Build
+
+See [GUIDE.md](GUIDE.md) for build presets and dependencies.
+
+## Verification
+
+Functional CI and performance evidence are separate. See [GUIDE.md](GUIDE.md) and `LAB_RULES.md` / `EVIDENCE.md` in `stra-ta/.github` for manifest provenance and the one-command suite (`./scripts/verify.sh` / `./scripts/confidence.sh` or `tools/verify.sh`).
+
+## Limitations
+
+CI is functional only. Performance evidence requires a committed manifest with machine metadata (commit, compiler, kernel, CPU, arch, build type, seed, argv) and a link from the claim to that artifact. See `stra-ta/.github` for lab-wide caveats.
+
