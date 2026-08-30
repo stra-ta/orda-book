@@ -1,7 +1,10 @@
 # Fuzzing
 
-The optional `orda_fuzz` target differentially exercises the production engine
-and the independent reference engine.
+The optional `orda_fuzz` target differentially exercises the baseline, pooled,
+and ladder engines against the independent reference engine.
+
+The ladder comparison intentionally keeps generated prices inside the ladder's
+valid domain.
 
 ## Build
 
@@ -19,7 +22,7 @@ cmake --build build-fuzz --target orda_fuzz --parallel
 Run a bounded smoke campaign locally:
 
 ```sh
-./build-fuzz/orda_fuzz -runs=10000
+./build-fuzz/orda_fuzz -runs=10000 -seed=305419896
 ```
 
 The fuzzer maps arbitrary bytes into add, cancel, and modify histories.
@@ -27,8 +30,9 @@ The fuzzer maps arbitrary bytes into add, cancel, and modify histories.
 It compares each event's error, trades, order-level book state, live-order
 count, and cumulative statistics.
 
-The target uses bounded positive prices and quantities for its first campaign,
-while dedicated abuse tests cover the quantity-overflow contract.
+The target uses bounded valid prices and quantities for the ladder comparison,
+while dedicated abuse tests cover invalid inputs and the quantity-overflow
+contract.
 
 ## Failure handling
 
@@ -36,6 +40,18 @@ The fuzzer traps on the first differential mismatch.
 
 LibFuzzer prints a reproducing input and saves a minimized artifact when run
 with a corpus directory.
+
+Use an artifact prefix and a corpus directory so the failure is a structured,
+replayable file rather than an untracked terminal fragment:
+
+```sh
+mkdir -p fuzz-corpus fuzz-artifacts
+./build-fuzz/orda_fuzz fuzz-corpus -runs=100000 \
+  -seed=305419896 -artifact_prefix=fuzz-artifacts/
+```
+
+Preserve the minimized byte file and its command line in a focused regression
+fixture when it exposes a real engine defect.
 
 Preserve a minimized input as a focused regression test when it exposes a real
 engine defect.

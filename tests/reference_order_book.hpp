@@ -37,6 +37,11 @@ class OrderBook {
 
   lob::BookError add_order(lob::OrderId order_id, lob::Side side, lob::Price price,
                            lob::Quantity qty, std::vector<lob::Trade>& trades);
+  lob::BookError add_order_with_policy(lob::OrderId order_id, lob::Side side,
+                                       lob::Price price, lob::Quantity qty,
+                                       lob::OrderType order_type,
+                                       lob::TimeInForce time_in_force, bool post_only,
+                                       std::vector<lob::Trade>& trades);
   lob::BookError cancel_order(lob::OrderId order_id);
   lob::BookError modify_order(lob::OrderId order_id, lob::Price new_price,
                               lob::Quantity new_qty, std::vector<lob::Trade>& trades);

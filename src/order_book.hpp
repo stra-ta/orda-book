@@ -65,6 +65,9 @@ class OrderBook {
   static bool is_valid_qty(Quantity qty) { return qty > 0; }
 
   PriceLevel& ensure_level(Side side, Price price);
+  BookError add_order_with_policy(OrderId order_id, Side side, Price price, Quantity qty,
+                                  OrderType order_type, TimeInForce time_in_force,
+                                  bool post_only, std::vector<Trade>& trades);
   void add_resting_order(OrderId order_id, Side side, Price price, Quantity qty);
   void remove_order(OrderId order_id, const OrderLocation& location);
   Quantity match_incoming(OrderId incoming_order_id, Side incoming_side, Price incoming_price,

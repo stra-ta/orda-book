@@ -1,3 +1,4 @@
+#include "binary_event_codec.hpp"
 #include "event_parser.hpp"
 #include "order_book.hpp"
 #include "pooled_order_book.hpp"
@@ -145,6 +146,7 @@ lob::Quantity random_qty(XorShift64& rng, lob::Quantity max_qty) {
 struct BenchmarkConfig {
   std::string file_path;
   std::string write_file_path;
+  std::string write_binary_file_path;
   std::optional<WorkloadKind> workload;
   std::size_t event_count = 0;
   std::size_t rounds = 5;
@@ -154,6 +156,7 @@ struct BenchmarkConfig {
   bool collect_latency = true;
   bool reuse_trades = false;
   bool calibrate_clock = false;
+  bool binary_file = false;
 };
 
 struct WorkloadStream {
@@ -310,6 +313,14 @@ BenchmarkConfig parse_args(int argc, char** argv) {
       config.write_file_path = argv[++i];
       continue;
     }
+    if (arg == "--write-binary-file" && i + 1 < argc) {
+      config.write_binary_file_path = argv[++i];
+      continue;
+    }
+    if (arg == "--binary") {
+      config.binary_file = true;
+      continue;
+    }
     if (arg == "--engine-only") {
       config.engine_only = true;
       continue;
@@ -331,7 +342,8 @@ BenchmarkConfig parse_args(int argc, char** argv) {
 
   if (config.calibrate_clock) {
     if (config.event_count != 0 || !config.file_path.empty() || config.engine_only ||
-        !config.write_file_path.empty() || config.workload.has_value()) {
+        !config.write_file_path.empty() || !config.write_binary_file_path.empty() ||
+        config.workload.has_value() || config.binary_file) {
       throw std::runtime_error("--calibrate-clock cannot be combined with benchmark inputs");
     }
     return config;
@@ -350,6 +362,12 @@ BenchmarkConfig parse_args(int argc, char** argv) {
   }
   if (!config.write_file_path.empty() && !generated_mode) {
     throw std::runtime_error("--write-file requires --events");
+  }
+  if (!config.write_binary_file_path.empty() && !generated_mode) {
+    throw std::runtime_error("--write-binary-file requires --events");
+  }
+  if (config.binary_file && !file_mode) {
+    throw std::runtime_error("--binary requires --file");
   }
   if (config.rounds == 0) {
     throw std::runtime_error("--rounds must be greater than zero");
@@ -637,20 +655,12 @@ template <typename Engine>
 RunStats run_parse_and_engine(const std::string& file_path, bool collect_latency,
                               bool reuse_trades) {
   const auto start = Clock::now();
-  const lob::ParseResult parsed = lob::parse_event_file(file_path);
-  if (!parsed.ok) {
-    throw std::runtime_error("parse failed");
-  }
-
   Engine book;
-  book.reserve_orders(parsed.events.size());
   std::vector<lob::Trade> trades;
-  trades.reserve(parsed.events.size() / 2 + 1);
   std::vector<std::uint64_t> latencies;
-  if (collect_latency) {
-    latencies.reserve(parsed.events.size());
-  }
-  for (const lob::Event& event : parsed.events) {
+  std::size_t event_count = 0;
+  const lob::EventCallback consume = [&book, &trades, &latencies, &event_count, collect_latency,
+                                      reuse_trades](const lob::Event& event) {
     if (reuse_trades) {
       trades.clear();
     }
@@ -664,12 +674,53 @@ RunStats run_parse_and_engine(const std::string& file_path, bool collect_latency
       latencies.push_back(static_cast<std::uint64_t>(
           std::chrono::duration_cast<std::chrono::nanoseconds>(event_end - event_start).count()));
     }
+    ++event_count;
+  };
+  const lob::ParseResult parsed = lob::for_each_event_file(file_path, consume);
+  if (!parsed.ok) {
+    throw std::runtime_error("parse failed on line " + std::to_string(parsed.error_line) + ": " +
+                             parsed.error_message);
   }
   const auto end = Clock::now();
 
   const std::chrono::duration<double> elapsed = end - start;
-  return make_run_stats(0, parsed.events.size(), book, 0, 0, elapsed.count(),
+  return make_run_stats(0, event_count, book, 0, 0, elapsed.count(),
                         std::move(latencies));
+}
+
+template <typename Engine>
+RunStats run_binary_parse_and_engine(const std::string& file_path, bool collect_latency,
+                                     bool reuse_trades) {
+  const auto start = Clock::now();
+  Engine book;
+  std::vector<lob::Trade> trades;
+  std::vector<std::uint64_t> latencies;
+  std::size_t event_count = 0;
+  const lob::EventCallback consume = [&book, &trades, &latencies, &event_count, collect_latency,
+                                      reuse_trades](const lob::Event& event) {
+    if (reuse_trades) {
+      trades.clear();
+    }
+    const auto event_start = collect_latency ? Clock::now() : Clock::time_point{};
+    const lob::BookError error = book.process(event, trades);
+    const auto event_end = collect_latency ? Clock::now() : Clock::time_point{};
+    if (error != lob::BookError::None) {
+      throw std::runtime_error("binary replay failed");
+    }
+    if (collect_latency) {
+      latencies.push_back(static_cast<std::uint64_t>(
+          std::chrono::duration_cast<std::chrono::nanoseconds>(event_end - event_start).count()));
+    }
+    ++event_count;
+  };
+  const lob::ParseResult parsed = lob::for_each_binary_event_file(file_path, consume);
+  if (!parsed.ok) {
+    throw std::runtime_error("binary parse failed on record " + std::to_string(parsed.error_line) +
+                             ": " + parsed.error_message);
+  }
+  const auto end = Clock::now();
+  const std::chrono::duration<double> elapsed = end - start;
+  return make_run_stats(0, event_count, book, 0, 0, elapsed.count(), std::move(latencies));
 }
 
 double events_per_second(const RunStats& stats) {
@@ -749,6 +800,7 @@ void print_generated_header(const BenchmarkConfig& config, const WorkloadStream&
 void print_file_header(const BenchmarkConfig& config, std::size_t event_count) {
   std::cout << "mode: " << (config.engine_only ? "file-engine-only" : "file-parse+engine") << "\n";
   std::cout << "file: " << config.file_path << "\n";
+  std::cout << "format: " << (config.binary_file ? "orda-binary-v1" : "text") << "\n";
   std::cout << "backend: " << to_string(config.backend) << "\n";
   std::cout << "timed_events: " << event_count << "\n";
   std::cout << "latency: " << (config.collect_latency ? "enabled" : "disabled") << "\n";
@@ -778,6 +830,18 @@ int main(int argc, char** argv) {
       return run_engine<lob::OrderBook>(stream, config.collect_latency, config.reuse_trades);
     };
     const auto run_file = [&config](const std::string& file_path) {
+      if (config.binary_file) {
+        if (config.backend == BackendKind::Ladder) {
+          return run_binary_parse_and_engine<lob::LadderOrderBook>(file_path, config.collect_latency,
+                                                                    config.reuse_trades);
+        }
+        if (config.backend == BackendKind::Pooled) {
+          return run_binary_parse_and_engine<lob::PooledOrderBook>(file_path, config.collect_latency,
+                                                                     config.reuse_trades);
+        }
+        return run_binary_parse_and_engine<lob::OrderBook>(file_path, config.collect_latency,
+                                                            config.reuse_trades);
+      }
       if (config.backend == BackendKind::Ladder) {
         return run_parse_and_engine<lob::LadderOrderBook>(file_path, config.collect_latency,
                                                           config.reuse_trades);
@@ -795,6 +859,20 @@ int main(int argc, char** argv) {
       if (!config.write_file_path.empty()) {
         write_events_file(stream, config.write_file_path);
       }
+      if (!config.write_binary_file_path.empty()) {
+        std::string error;
+        if (!lob::write_binary_event_file(config.write_binary_file_path,
+                                          [&stream] {
+                                            std::vector<lob::Event> events;
+                                            events.reserve(stream.setup.size() + stream.timed.size());
+                                            events.insert(events.end(), stream.setup.begin(), stream.setup.end());
+                                            events.insert(events.end(), stream.timed.begin(), stream.timed.end());
+                                            return events;
+                                          }(),
+                                          error)) {
+          throw std::runtime_error(error);
+        }
+      }
 
       print_generated_header(config, stream);
       std::vector<RunStats> runs;
@@ -808,7 +886,9 @@ int main(int argc, char** argv) {
     }
 
     if (config.engine_only) {
-      const lob::ParseResult parsed = lob::parse_event_file(config.file_path);
+      const lob::ParseResult parsed = config.binary_file
+                                          ? lob::parse_binary_event_file(config.file_path)
+                                          : lob::parse_event_file(config.file_path);
       if (!parsed.ok) {
         std::cerr << "parse error on line " << parsed.error_line << ": " << parsed.error_message << '\n';
         return 1;
@@ -828,7 +908,9 @@ int main(int argc, char** argv) {
       return 0;
     }
 
-    const lob::ParseResult parsed = lob::parse_event_file(config.file_path);
+    const lob::ParseResult parsed = config.binary_file
+                                        ? lob::parse_binary_event_file(config.file_path)
+                                        : lob::parse_event_file(config.file_path);
     if (!parsed.ok) {
       std::cerr << "parse error on line " << parsed.error_line << ": " << parsed.error_message << '\n';
       return 1;

@@ -1,23 +1,26 @@
 # Backend decision
 
 The project keeps three implementations because they answer different design
-questions rather than because one benchmark number is universally best.
+questions during the promotion period.
 
 ## Decision
 
 | backend | decision | reason |
 | --- | --- | --- |
-| baseline | retain as default and correctness reference | general price domain, simplest control path, easiest oracle |
-| pooled | retain as general performance candidate | roughly half the measured event-path allocations of baseline |
-| ladder | retain as bounded-market candidate | lowest elapsed time at the largest tested depth |
+| baseline | retain as correctness control, not a successor candidate | general price domain, simplest control path, easiest oracle |
+| pooled | current general-purpose successor candidate | stable slots and no fixed price domain, subject to Linux evidence |
+| ladder | retain as a bounded-market experiment | fixed price domain and bitmap discovery, not a universal backend |
 
 The baseline remains the public default.
 
-The pooled backend is the next general-purpose implementation to investigate
-because it improves allocation behavior without imposing a fixed price range.
+The pooled backend is the only current general-purpose successor candidate.
+
+The baseline remains available as a differential control and fallback.
 
 The ladder backend should only be selected when the instrument's price domain is
 known and the configured bounds are part of the product contract.
+
+No backend is promoted by a single local throughput table.
 
 ## Evidence
 
@@ -30,12 +33,17 @@ the ladder backend, while pooled had the lowest p50 at depth 64.
 These measurements include timestamp overhead and are not portable production
 performance claims.
 
-## Follow-up gate
+## Promotion gate
 
-Before changing the default, repeat the comparison on Linux with CPU affinity,
-fixed frequency policy, multiple rounds, and `perf` counters.
+Promote pooled only after it passes the full differential and fuzz campaigns,
+then repeat the comparison on Linux with CPU affinity, fixed frequency policy,
+multiple rounds, and `perf` counters.
 
 The follow-up must include reject-heavy and modify-heavy workloads, not only
 the sweep workload.
 
-The follow-up must also compare memory footprint and correctness campaign cost.
+The follow-up must also compare memory footprint, correctness campaign cost,
+tail distributions, and failure behavior.
+
+Until that gate is met, removing baseline would discard the independent control
+needed to interpret pooled changes.

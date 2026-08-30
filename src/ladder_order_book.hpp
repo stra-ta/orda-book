@@ -56,6 +56,9 @@ class LadderOrderBook {
   static bool valid_qty(Quantity qty) { return qty > 0; }
   bool valid_price(Price price) const { return price >= min_price_ && price <= max_price_; }
   std::size_t index_for(Price price) const;
+  BookError add_order_with_policy(OrderId order_id, Side side, Price price, Quantity qty,
+                                  OrderType order_type, TimeInForce time_in_force,
+                                  bool post_only, std::vector<Trade>& trades);
   void set_occupied(Side side, std::size_t index);
   void clear_occupied(Side side, std::size_t index);
   std::optional<std::size_t> best_index(Side side) const;

@@ -2,6 +2,7 @@
 #include "quantity_arithmetic.hpp"
 
 #include <algorithm>
+#include <limits>
 
 namespace reference_lob {
 
@@ -142,12 +143,17 @@ lob::Quantity OrderBook::match_incoming(lob::OrderId incoming_order_id,
   return incoming_qty;
 }
 
-lob::BookError OrderBook::add_order(lob::OrderId order_id, lob::Side side, lob::Price price,
-                                    lob::Quantity qty, std::vector<lob::Trade>& trades) {
+lob::BookError OrderBook::add_order_with_policy(lob::OrderId order_id, lob::Side side,
+                                                lob::Price price, lob::Quantity qty,
+                                                lob::OrderType order_type,
+                                                lob::TimeInForce time_in_force, bool post_only,
+                                                std::vector<lob::Trade>& trades) {
   ++stats_.add_requests;
-  if (!valid_price(price)) {
+  const bool is_market = order_type == lob::OrderType::Market;
+  if ((!is_market && !valid_price(price)) || (is_market && post_only)) {
     ++stats_.rejected_requests;
-    return lob::BookError::InvalidPrice;
+    return is_market && post_only ? lob::BookError::WouldTakeLiquidity
+                                  : lob::BookError::InvalidPrice;
   }
   if (!valid_qty(qty)) {
     ++stats_.rejected_requests;
@@ -156,6 +162,11 @@ lob::BookError OrderBook::add_order(lob::OrderId order_id, lob::Side side, lob::
   if (contains(order_id)) {
     ++stats_.rejected_requests;
     return lob::BookError::DuplicateOrderId;
+  }
+  if (is_market) {
+    price = side == lob::Side::Bid ? std::numeric_limits<lob::Price>::max()
+                                   : std::numeric_limits<lob::Price>::min();
+    time_in_force = lob::TimeInForce::ImmediateOrCancel;
   }
   lob::Quantity level_qty = 0;
   if (side == lob::Side::Bid) {
@@ -175,17 +186,32 @@ lob::BookError OrderBook::add_order(lob::OrderId order_id, lob::Side side, lob::
   }
   const lob::Quantity crossing_qty = max_crossing_qty(side, price, qty);
   const lob::Quantity resting_qty = qty - crossing_qty;
-  if (lob::quantity_add_would_overflow(level_qty, resting_qty) ||
+  const bool can_rest = !is_market && time_in_force == lob::TimeInForce::GoodTilCancel;
+  if (time_in_force == lob::TimeInForce::FillOrKill && crossing_qty < qty) {
+    ++stats_.rejected_requests;
+    return lob::BookError::InsufficientLiquidity;
+  }
+  if (post_only && crossing_qty != 0) {
+    ++stats_.rejected_requests;
+    return lob::BookError::WouldTakeLiquidity;
+  }
+  if ((can_rest && lob::quantity_add_would_overflow(level_qty, resting_qty)) ||
       lob::quantity_add_would_overflow(stats_.traded_qty, crossing_qty)) {
     ++stats_.rejected_requests;
     return lob::BookError::QuantityOverflow;
   }
 
   const lob::Quantity remaining = match_incoming(order_id, side, price, qty, trades);
-  if (remaining > 0) {
+  if (remaining > 0 && can_rest) {
     add_resting_order(order_id, side, price, remaining);
   }
   return lob::BookError::None;
+}
+
+lob::BookError OrderBook::add_order(lob::OrderId order_id, lob::Side side, lob::Price price,
+                                    lob::Quantity qty, std::vector<lob::Trade>& trades) {
+  return add_order_with_policy(order_id, side, price, qty, lob::OrderType::Limit,
+                               lob::TimeInForce::GoodTilCancel, false, trades);
 }
 
 lob::BookError OrderBook::cancel_order(lob::OrderId order_id) {
@@ -271,7 +297,8 @@ lob::BookError OrderBook::modify_order(lob::OrderId order_id, lob::Price new_pri
 lob::BookError OrderBook::process(const lob::Event& event, std::vector<lob::Trade>& trades) {
   switch (event.type) {
     case lob::EventType::Add:
-      return add_order(event.order_id, event.side, event.price, event.qty, trades);
+      return add_order_with_policy(event.order_id, event.side, event.price, event.qty,
+                                   event.order_type, event.time_in_force, event.post_only, trades);
     case lob::EventType::Cancel:
       return cancel_order(event.order_id);
     case lob::EventType::Modify:

@@ -191,12 +191,17 @@ Quantity LadderOrderBook::match_incoming(OrderId incoming_order_id, Side incomin
   return incoming_qty;
 }
 
-BookError LadderOrderBook::add_order(OrderId order_id, Side side, Price price, Quantity qty,
-                                     std::vector<Trade>& trades) {
+BookError LadderOrderBook::add_order_with_policy(OrderId order_id, Side side, Price price,
+                                                 Quantity qty, OrderType order_type,
+                                                 TimeInForce time_in_force, bool post_only,
+                                                 std::vector<Trade>& trades) {
   ++stats_.add_requests;
-  if (!valid_price(price)) {
+  const bool is_market = order_type == OrderType::Market;
+  if ((!is_market && !valid_price(price)) || (is_market && post_only)) {
     ++stats_.rejected_requests;
-    return price > 0 ? BookError::PriceOutOfRange : BookError::InvalidPrice;
+    return is_market && post_only
+               ? BookError::WouldTakeLiquidity
+               : (price > 0 ? BookError::PriceOutOfRange : BookError::InvalidPrice);
   }
   if (!valid_qty(qty)) {
     ++stats_.rejected_requests;
@@ -206,19 +211,40 @@ BookError LadderOrderBook::add_order(OrderId order_id, Side side, Price price, Q
     ++stats_.rejected_requests;
     return BookError::DuplicateOrderId;
   }
-  const PriceLevel& level = levels_[index_for(price)];
+  if (is_market) {
+    price = side == Side::Bid ? max_price_ : min_price_;
+    time_in_force = TimeInForce::ImmediateOrCancel;
+  }
   const Quantity crossing_qty = max_crossing_qty(side, price, qty);
   const Quantity resting_qty = qty - crossing_qty;
-  if (quantity_add_would_overflow(level.total_qty, resting_qty) ||
+  const bool can_rest = !is_market && time_in_force == TimeInForce::GoodTilCancel;
+  if (time_in_force == TimeInForce::FillOrKill && crossing_qty < qty) {
+    ++stats_.rejected_requests;
+    return BookError::InsufficientLiquidity;
+  }
+  if (post_only && crossing_qty != 0) {
+    ++stats_.rejected_requests;
+    return BookError::WouldTakeLiquidity;
+  }
+  const bool level_overflow = can_rest &&
+                              quantity_add_would_overflow(levels_[index_for(price)].total_qty,
+                                                          resting_qty);
+  if (level_overflow ||
       quantity_add_would_overflow(stats_.traded_qty, crossing_qty)) {
     ++stats_.rejected_requests;
     return BookError::QuantityOverflow;
   }
   const Quantity remaining = match_incoming(order_id, side, price, qty, trades);
-  if (remaining > 0) {
+  if (remaining > 0 && can_rest) {
     add_resting_order(order_id, side, price, remaining);
   }
   return BookError::None;
+}
+
+BookError LadderOrderBook::add_order(OrderId order_id, Side side, Price price, Quantity qty,
+                                     std::vector<Trade>& trades) {
+  return add_order_with_policy(order_id, side, price, qty, OrderType::Limit,
+                               TimeInForce::GoodTilCancel, false, trades);
 }
 
 BookError LadderOrderBook::cancel_order(OrderId order_id) {
@@ -272,7 +298,8 @@ BookError LadderOrderBook::modify_order(OrderId order_id, Price new_price, Quant
 BookError LadderOrderBook::process(const Event& event, std::vector<Trade>& trades) {
   switch (event.type) {
     case EventType::Add:
-      return add_order(event.order_id, event.side, event.price, event.qty, trades);
+      return add_order_with_policy(event.order_id, event.side, event.price, event.qty,
+                                   event.order_type, event.time_in_force, event.post_only, trades);
     case EventType::Cancel:
       return cancel_order(event.order_id);
     case EventType::Modify:

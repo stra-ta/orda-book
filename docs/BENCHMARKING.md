@@ -28,6 +28,11 @@ The baseline backend is the default.
 File mode can measure parsing together with engine processing or run the engine
 against events parsed before the timed rounds.
 
+Text parse-plus-engine mode streams one event at a time.
+
+The versioned binary format can be selected with `--binary` and avoids text
+tokenization overhead for benchmark-sized replays.
+
 ## Measurements
 
 Each round reports:
@@ -42,6 +47,8 @@ Each round reports:
 
 The benchmark header records whether latency collection is enabled and whether
 the trade buffer is accumulated or reused.
+
+It also records the input format, backend, workload, and seed where applicable.
 
 Per-event latency starts immediately before `OrderBook::process` and ends
 immediately after it returns.
@@ -134,3 +141,10 @@ branch-prediction effects.
 
 Those effects remain part of the evidence and must be recorded rather than
 hidden behind a single number.
+
+Functional CI runs and performance evidence are separate.
+
+CI establishes build and correctness contracts.
+
+Published performance comparisons must use a committed raw event or binary
+artifact plus machine metadata and a clean-tree commit.

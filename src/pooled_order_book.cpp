@@ -237,12 +237,15 @@ Quantity PooledOrderBook::match_incoming(OrderId incoming_order_id, Side incomin
   return incoming_qty;
 }
 
-BookError PooledOrderBook::add_order(OrderId order_id, Side side, Price price, Quantity qty,
-                                     std::vector<Trade>& trades) {
+BookError PooledOrderBook::add_order_with_policy(OrderId order_id, Side side, Price price,
+                                                 Quantity qty, OrderType order_type,
+                                                 TimeInForce time_in_force, bool post_only,
+                                                 std::vector<Trade>& trades) {
   ++stats_.add_requests;
-  if (!is_valid_price(price)) {
+  const bool is_market = order_type == OrderType::Market;
+  if ((!is_market && !is_valid_price(price)) || (is_market && post_only)) {
     ++stats_.rejected_requests;
-    return BookError::InvalidPrice;
+    return is_market && post_only ? BookError::WouldTakeLiquidity : BookError::InvalidPrice;
   }
   if (!is_valid_qty(qty)) {
     ++stats_.rejected_requests;
@@ -252,14 +255,28 @@ BookError PooledOrderBook::add_order(OrderId order_id, Side side, Price price, Q
     ++stats_.rejected_requests;
     return BookError::DuplicateOrderId;
   }
+  if (is_market) {
+    price = side == Side::Bid ? std::numeric_limits<Price>::max()
+                              : std::numeric_limits<Price>::min();
+    time_in_force = TimeInForce::ImmediateOrCancel;
+  }
   const Quantity crossing_qty = max_crossing_qty(side, price, qty);
   const Quantity resting_qty = qty - crossing_qty;
+  const bool can_rest = !is_market && time_in_force == TimeInForce::GoodTilCancel;
+  if (time_in_force == TimeInForce::FillOrKill && crossing_qty < qty) {
+    ++stats_.rejected_requests;
+    return BookError::InsufficientLiquidity;
+  }
+  if (post_only && crossing_qty != 0) {
+    ++stats_.rejected_requests;
+    return BookError::WouldTakeLiquidity;
+  }
   bool level_overflow = false;
-  if (side == Side::Bid) {
+  if (can_rest && side == Side::Bid) {
     const auto level_it = bids_.find(price);
     level_overflow = level_it != bids_.end() &&
                      quantity_add_would_overflow(level_it->second.total_qty, resting_qty);
-  } else {
+  } else if (can_rest) {
     const auto level_it = asks_.find(price);
     level_overflow = level_it != asks_.end() &&
                      quantity_add_would_overflow(level_it->second.total_qty, resting_qty);
@@ -276,17 +293,23 @@ BookError PooledOrderBook::add_order(OrderId order_id, Side side, Price price, Q
   // opposing order is fully consumed before the incoming is exhausted, so at least
   // one slot is freed. The only unsatisfiable case is a non-crossing resting add at
   // full capacity (no free slot now and no opposing order to consume).
-  if (resting_qty > 0 && free_head_ == kInvalidSlot && crossing_qty == 0) {
+  if (can_rest && resting_qty > 0 && free_head_ == kInvalidSlot && crossing_qty == 0) {
     ++stats_.rejected_requests;
     return BookError::CapacityExceeded;
   }
 
   const Quantity remaining = match_incoming(order_id, side, price, qty, trades);
-  if (remaining == 0) {
+  if (remaining == 0 || time_in_force != TimeInForce::GoodTilCancel || is_market) {
     return BookError::None;
   }
   add_resting_order(order_id, side, price, remaining);
   return BookError::None;
+}
+
+BookError PooledOrderBook::add_order(OrderId order_id, Side side, Price price, Quantity qty,
+                                     std::vector<Trade>& trades) {
+  return add_order_with_policy(order_id, side, price, qty, OrderType::Limit,
+                               TimeInForce::GoodTilCancel, false, trades);
 }
 
 BookError PooledOrderBook::cancel_order(OrderId order_id) {
@@ -357,7 +380,8 @@ BookError PooledOrderBook::modify_order(OrderId order_id, Price new_price, Quant
 BookError PooledOrderBook::process(const Event& event, std::vector<Trade>& trades) {
   switch (event.type) {
     case EventType::Add:
-      return add_order(event.order_id, event.side, event.price, event.qty, trades);
+      return add_order_with_policy(event.order_id, event.side, event.price, event.qty,
+                                   event.order_type, event.time_in_force, event.post_only, trades);
     case EventType::Cancel:
       return cancel_order(event.order_id);
     case EventType::Modify:

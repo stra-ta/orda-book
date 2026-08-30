@@ -1,19 +1,36 @@
 # Architecture
 
-orda-book is a single-threaded limit order book with an offline text replay
-path and a benchmark harness.
+orda-book is a single-threaded limit order book with text and versioned binary
+replay paths and a benchmark harness.
 
 ## Scope
 
 The engine accepts add, cancel, and modify events.
 
-An add can match resting orders at crossed prices and leaves any remainder in
-the book.
+An add can be a limit or market order.
 
-The current input path parses a complete file into memory before replay.
+Limit orders use GTC, IOC, or FOK time-in-force policies.
 
-Networking, persistence, market orders, and multi-threaded matching are outside
-the current scope.
+Market orders are immediate-only and never rest.
+
+IOC orders cancel an unfilled remainder.
+
+FOK orders reject atomically unless the complete quantity is available at
+acceptable prices.
+
+Post-only is an explicit rejection policy when an order would immediately
+trade.
+
+A limit GTC add can match resting orders at crossed prices and leaves any
+remainder in the book.
+
+The callback replay path parses one text or binary event at a time.
+
+The compatibility `parse_event_file` API still returns a complete vector for
+callers that need random access.
+
+Networking, persistence, self-trade prevention, and multi-threaded matching are
+outside the current scope.
 
 ## Data structure
 
@@ -48,12 +65,13 @@ iterator stability and direct FIFO behavior.
 
 ## Event flow
 
-1. `event_parser.cpp` converts text lines into typed `Event` values.
+1. `event_parser.cpp` or `binary_event_codec.cpp` converts input into typed
+   `Event` values.
 2. `OrderBook::process` dispatches the event to the matching operation.
-3. An add validates its fields and order ID.
+3. An add validates its fields, order ID, and time-in-force policy.
 4. `match_incoming` walks the best opposing levels while the price crosses.
 5. Trades execute against the oldest order at each level.
-6. Any remaining quantity becomes a new resting order.
+6. Any allowed remainder becomes a new resting order.
 7. Replay and benchmark programs expose the resulting trades, statistics, and
    book state.
 

@@ -66,6 +66,9 @@ class PooledOrderBook {
   static bool is_valid_qty(Quantity qty) { return qty > 0; }
 
   PriceLevel& ensure_level(Side side, Price price);
+  BookError add_order_with_policy(OrderId order_id, Side side, Price price, Quantity qty,
+                                  OrderType order_type, TimeInForce time_in_force,
+                                  bool post_only, std::vector<Trade>& trades);
   SlotIndex allocate_slot();
   void release_slot(SlotIndex slot);
   void append_slot(PriceLevel& level, SlotIndex slot);

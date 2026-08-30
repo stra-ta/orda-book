@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -40,16 +41,71 @@ enum class EventType {
   Modify,
 };
 
+enum class OrderType {
+  Limit,
+  Market,
+};
+
+enum class TimeInForce {
+  GoodTilCancel,
+  ImmediateOrCancel,
+  FillOrKill,
+};
+
+inline std::string_view to_string(OrderType type) {
+  return type == OrderType::Limit ? "LIMIT" : "MARKET";
+}
+
+inline std::string_view to_string(TimeInForce time_in_force) {
+  switch (time_in_force) {
+    case TimeInForce::GoodTilCancel:
+      return "GTC";
+    case TimeInForce::ImmediateOrCancel:
+      return "IOC";
+    case TimeInForce::FillOrKill:
+      return "FOK";
+  }
+  return "UNKNOWN";
+}
+
+inline std::optional<OrderType> parse_order_type(std::string_view token) {
+  if (token == "LIMIT") {
+    return OrderType::Limit;
+  }
+  if (token == "MARKET") {
+    return OrderType::Market;
+  }
+  return std::nullopt;
+}
+
+inline std::optional<TimeInForce> parse_time_in_force(std::string_view token) {
+  if (token == "GTC") {
+    return TimeInForce::GoodTilCancel;
+  }
+  if (token == "IOC") {
+    return TimeInForce::ImmediateOrCancel;
+  }
+  if (token == "FOK") {
+    return TimeInForce::FillOrKill;
+  }
+  return std::nullopt;
+}
+
 struct Event {
   EventType type{};
   OrderId order_id{};
   Side side{};
   Price price{};
   Quantity qty{};
+  OrderType order_type{OrderType::Limit};
+  TimeInForce time_in_force{TimeInForce::GoodTilCancel};
+  bool post_only{false};
   Price new_price{};
   Quantity new_qty{};
   std::size_t line_number{};
 };
+
+using EventCallback = std::function<void(const Event&)>;
 
 struct Trade {
   OrderId resting_order_id{};
@@ -81,6 +137,8 @@ enum class BookError {
   QuantityOverflow,
   CapacityExceeded,
   PriceOutOfRange,
+  InsufficientLiquidity,
+  WouldTakeLiquidity,
 };
 
 inline std::string_view to_string(BookError error) {
@@ -101,6 +159,10 @@ inline std::string_view to_string(BookError error) {
       return "capacity_exceeded";
     case BookError::PriceOutOfRange:
       return "price_out_of_range";
+    case BookError::InsufficientLiquidity:
+      return "insufficient_liquidity";
+    case BookError::WouldTakeLiquidity:
+      return "would_take_liquidity";
   }
   return "unknown";
 }

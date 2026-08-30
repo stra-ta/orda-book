@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace lob {
 namespace {
@@ -53,7 +54,44 @@ ParseResult fail(std::size_t line_number, std::string message) {
   return result;
 }
 
-ParseResult parse_event_stream_impl(std::istream& input, std::size_t reserve_hint) {
+bool parse_add_options(std::string_view& view, Event& event) {
+  bool saw_time_in_force = false;
+  for (;;) {
+    const std::string_view option = next_token(view);
+    if (option.empty()) {
+      break;
+    }
+    if (option == "POST_ONLY") {
+      if (event.order_type == OrderType::Market || event.time_in_force == TimeInForce::FillOrKill) {
+        return false;
+      }
+      event.post_only = true;
+      continue;
+    }
+    if (option == "LIMIT") {
+      if (event.order_type == OrderType::Market) {
+        return false;
+      }
+      continue;
+    }
+    const auto time_in_force = parse_time_in_force(option);
+    if (!time_in_force.has_value() || saw_time_in_force) {
+      return false;
+    }
+    if (event.order_type == OrderType::Market && *time_in_force == TimeInForce::GoodTilCancel) {
+      return false;
+    }
+    event.time_in_force = *time_in_force;
+    saw_time_in_force = true;
+  }
+  if (event.order_type == OrderType::Market && !saw_time_in_force) {
+    event.time_in_force = TimeInForce::ImmediateOrCancel;
+  }
+  return !(event.post_only && event.time_in_force == TimeInForce::FillOrKill);
+}
+
+ParseResult parse_event_stream_impl(std::istream& input, std::size_t reserve_hint,
+                                    const EventCallback* callback = nullptr) {
   ParseResult result;
   if (reserve_hint != 0) {
     result.events.reserve(reserve_hint);
@@ -76,10 +114,9 @@ ParseResult parse_event_stream_impl(std::istream& input, std::size_t reserve_hin
       event.type = EventType::Add;
       const std::string_view order_id = next_token(view);
       const std::string_view side = next_token(view);
-      const std::string_view price = next_token(view);
+      const std::string_view price_or_type = next_token(view);
       const std::string_view qty = next_token(view);
-      if (!parse_integer(order_id, event.order_id) || !parse_integer(price, event.price) ||
-          !parse_integer(qty, event.qty)) {
+      if (!parse_integer(order_id, event.order_id) || !parse_integer(qty, event.qty)) {
         return fail(line_number, "invalid ADD event");
       }
       const auto parsed_side = parse_side(side);
@@ -87,10 +124,20 @@ ParseResult parse_event_stream_impl(std::istream& input, std::size_t reserve_hin
         return fail(line_number, "invalid side");
       }
       event.side = *parsed_side;
-      if (!next_token(view).empty()) {
+      if (price_or_type == "MARKET") {
+        event.order_type = OrderType::Market;
+        event.price = kInvalidPrice;
+      } else if (!parse_integer(price_or_type, event.price)) {
         return fail(line_number, "extra tokens in ADD event");
       }
-      result.events.push_back(event);
+      if (!parse_add_options(view, event)) {
+        return fail(line_number, "invalid ADD options");
+      }
+      if (callback != nullptr) {
+        (*callback)(event);
+      } else {
+        result.events.push_back(event);
+      }
       continue;
     }
 
@@ -103,7 +150,11 @@ ParseResult parse_event_stream_impl(std::istream& input, std::size_t reserve_hin
       if (!next_token(view).empty()) {
         return fail(line_number, "extra tokens in CANCEL event");
       }
-      result.events.push_back(event);
+      if (callback != nullptr) {
+        (*callback)(event);
+      } else {
+        result.events.push_back(event);
+      }
       continue;
     }
 
@@ -119,7 +170,11 @@ ParseResult parse_event_stream_impl(std::istream& input, std::size_t reserve_hin
       if (!next_token(view).empty()) {
         return fail(line_number, "extra tokens in MODIFY event");
       }
-      result.events.push_back(event);
+      if (callback != nullptr) {
+        (*callback)(event);
+      } else {
+        result.events.push_back(event);
+      }
       continue;
     }
 
@@ -143,6 +198,18 @@ ParseResult parse_event_file(const std::string& path) {
   const std::size_t reserve_hint = end > 0 ? static_cast<std::size_t>(end) / 18U : 0U;
   input.seekg(0, std::ios::beg);
   return parse_event_stream_impl(input, reserve_hint);
+}
+
+ParseResult for_each_event_stream(std::istream& input, const EventCallback& callback) {
+  return parse_event_stream_impl(input, 0, &callback);
+}
+
+ParseResult for_each_event_file(const std::string& path, const EventCallback& callback) {
+  std::ifstream input(path, std::ios::binary);
+  if (!input) {
+    return fail(0, "failed to open file");
+  }
+  return parse_event_stream_impl(input, 0, &callback);
 }
 
 }  // namespace lob
