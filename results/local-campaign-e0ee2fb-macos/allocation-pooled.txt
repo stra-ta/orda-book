@@ -1,0 +1,5 @@
+events: 500000
+backend: pooled
+round 1: allocations=400376 allocations_per_event=0.800752 bytes=12821312 bytes_per_event=25.6426
+round 2: allocations=400376 allocations_per_event=0.800752 bytes=12821312 bytes_per_event=25.6426
+round 3: allocations=400376 allocations_per_event=0.800752 bytes=12821312 bytes_per_event=25.6426

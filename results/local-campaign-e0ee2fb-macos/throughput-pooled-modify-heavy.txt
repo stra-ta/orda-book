@@ -1,0 +1,12 @@
+mode: generated-engine
+workload: modify-heavy
+seed: 305419896
+backend: pooled
+setup_events: 4096
+timed_events: 200000
+latency: disabled
+trade_buffer: reused
+round 1: 0.023336 s  8570617.30 ev/s  116.68 ns/ev  latency_samples=0  trades=19850 traded_qty=19850 rejected=0 live=4096
+round 2: 0.022769 s  8783921.03 ev/s  113.84 ns/ev  latency_samples=0  trades=19850 traded_qty=19850 rejected=0 live=4096
+round 3: 0.022690 s  8814504.27 ev/s  113.45 ns/ev  latency_samples=0  trades=19850 traded_qty=19850 rejected=0 live=4096
+median : 0.022769 s  8783921.03 ev/s  113.84 ns/ev  latency_samples=0  trades=19850 traded_qty=19850 rejected=0 live=4096

@@ -1,0 +1,6 @@
+events: 4160
+depth: 4096
+cycles: 32
+round 1: 0.000557625 s  p50=84 ns  p99=833 ns  p999=2667 ns
+round 2: 0.00047325 s  p50=84 ns  p99=125 ns  p999=375 ns
+round 3: 0.000473958 s  p50=84 ns  p99=125 ns  p999=333 ns

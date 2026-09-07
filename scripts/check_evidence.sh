@@ -21,7 +21,7 @@ else
   echo "evidence check: snapshot ${snapshot_commit} is historical; HEAD is ${current_commit}"
 fi
 
-if ! rg -q 'It is not a claim about the current commit' README.md; then
+if ! grep -q 'It is not a claim about the current commit' README.md; then
   echo "evidence check: historical table is not marked as non-current" >&2
   exit 1
 fi

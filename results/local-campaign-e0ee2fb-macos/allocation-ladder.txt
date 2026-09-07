@@ -1,0 +1,5 @@
+events: 500000
+backend: ladder
+round 1: allocations=800288 allocations_per_event=1.60058 bytes=35212672 bytes_per_event=70.4253
+round 2: allocations=800288 allocations_per_event=1.60058 bytes=35212672 bytes_per_event=70.4253
+round 3: allocations=800288 allocations_per_event=1.60058 bytes=35212672 bytes_per_event=70.4253

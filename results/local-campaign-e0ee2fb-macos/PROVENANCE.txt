@@ -1,0 +1,14 @@
+# provenance
+
+commit: e0ee2fb5c5b667456f032918f52d1116a6df00f1
+dirty:
+ M src/benchmark_main.cpp
+ M tests/differential_tests.cpp
+?? results/local-campaign-e0ee2fb-macos/
+date_utc: 2026-09-07T22:51:27Z
+machine: MacBookAir10,1, arm64, 17179869184 bytes
+os: Darwin 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:26:46 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T8103 arm64
+compiler: Apple clang version 21.0.0 (clang-2100.1.1.101)
+build_type: Release
+seed: 305419896
+trade_buffer: reused

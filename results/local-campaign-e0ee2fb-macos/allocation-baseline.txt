@@ -1,0 +1,5 @@
+events: 500000
+backend: baseline
+round 1: allocations=800520 allocations_per_event=1.60104 bytes=38432384 bytes_per_event=76.8648
+round 2: allocations=800520 allocations_per_event=1.60104 bytes=38432384 bytes_per_event=76.8648
+round 3: allocations=800520 allocations_per_event=1.60104 bytes=38432384 bytes_per_event=76.8648
