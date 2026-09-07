@@ -21,12 +21,15 @@ It is not a claim about the current commit, a production exchange, or a portable
 
 ## Matching boundary
 
-- FIFO within each price level
+- Price-time priority (FIFO within each price level) as the standard default algorithm
 - Cancel-replace loses queue position
-- Market and IOC remainders never rest
+- Market and IOC remainders never rest (engine design contract, not a venue claim)
 - FOK either fills completely or changes nothing
 - Post-only rejects an immediate trade
 - No network, persistence, or self-trade policy
+
+Matching semantics describe this engine only.
+See [`docs/VENUE_PARITY.md`](docs/VENUE_PARITY.md) for a known venue divergence.
 
 [Build, replay, verify, benchmark, and inspect the limits](GUIDE.md).
 

@@ -44,7 +44,7 @@ The matching core has no network or persistence layer.
 
 The event model supports limit and market adds, GTC, IOC, and FOK time-in-force policies, and explicit post-only rejection.
 
-Market orders never rest.
+Market orders never rest by engine design; this is an inference from engine behavior, not a venue claim (see [`docs/VENUE_PARITY.md`](docs/VENUE_PARITY.md)).
 
 IOC orders cancel any unfilled remainder.
 
@@ -149,6 +149,7 @@ Historical performance numbers are not automatically refreshed and must not be c
 - [`docs/BENCHMARKING.md`](docs/BENCHMARKING.md): measurement method and interpretation rules.
 - [`docs/BENCHMARK_RESULTS.md`](docs/BENCHMARK_RESULTS.md): historical result artifact and environment.
 - [`docs/FUZZING.md`](docs/FUZZING.md): differential fuzzer build, minimization, and corpus handling.
+- [`docs/VENUE_PARITY.md`](docs/VENUE_PARITY.md): engine matching rules versus production venue behavior.
 - [`docs/INGRESS_BOUNDARY_DESIGN.md`](docs/INGRESS_BOUNDARY_DESIGN.md): partition and queue boundary.
 - [`docs/ORDER_STORAGE_DESIGN.md`](docs/ORDER_STORAGE_DESIGN.md): pooled storage contract.
 - [`docs/PRICE_LADDER_DESIGN.md`](docs/PRICE_LADDER_DESIGN.md): bounded ladder contract.

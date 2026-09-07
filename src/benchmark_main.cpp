@@ -55,6 +55,7 @@ enum class WorkloadKind {
   Sweep,
   CancelHeavy,
   ModifyHeavy,
+  RejectHeavy,
 };
 
 enum class BackendKind {
@@ -102,6 +103,8 @@ std::string_view to_string(WorkloadKind workload) {
       return "cancel-heavy";
     case WorkloadKind::ModifyHeavy:
       return "modify-heavy";
+    case WorkloadKind::RejectHeavy:
+      return "reject-heavy";
   }
   return "unknown";
 }
@@ -124,6 +127,9 @@ std::optional<WorkloadKind> parse_workload(std::string_view token) {
   }
   if (token == "modify-heavy") {
     return WorkloadKind::ModifyHeavy;
+  }
+  if (token == "reject-heavy") {
+    return WorkloadKind::RejectHeavy;
   }
   return std::nullopt;
 }
@@ -232,6 +238,18 @@ class StreamBuilder {
 
   lob::OrderId add_timed(lob::Side side, lob::Price price, lob::Quantity qty) {
     return add_event(stream_.timed, side, price, qty);
+  }
+
+  void add_timed_with_id(lob::OrderId order_id, lob::Side side, lob::Price price,
+                         lob::Quantity qty) {
+    lob::Event event;
+    event.type = lob::EventType::Add;
+    event.order_id = order_id;
+    event.side = side;
+    event.price = price;
+    event.qty = qty;
+    event.line_number = next_line_++;
+    stream_.timed.push_back(event);
   }
 
   void cancel_timed(lob::OrderId order_id) {
@@ -554,6 +572,71 @@ WorkloadStream build_modify_heavy(std::size_t count, std::uint64_t seed) {
   return builder.take();
 }
 
+WorkloadStream build_reject_heavy(std::size_t count, std::uint64_t seed) {
+  // Reject-heavy: the setup phase exactly fills the pooled backend's reserved
+  // capacity (run_engine reserves only the setup size for this workload), so
+  // every further non-crossing timed add exercises the
+  // reserved-capacity-full rejection path on pooled. The remaining timed
+  // events are an invalid-input storm (duplicate IDs, invalid price/qty,
+  // unknown cancel/modify targets, invalid modifies) that every backend must
+  // reject without changing book state. Setup IDs are never cancelled, so
+  // they stay live on every backend for the duplicate/modify probes.
+  StreamBuilder builder(WorkloadKind::RejectHeavy);
+  XorShift64 rng(seed);
+
+  const std::size_t setup_size =
+      std::max<std::size_t>(64, std::min<std::size_t>(1024, count / 8 + 1));
+  std::vector<lob::OrderId> live_setup_ids;
+  live_setup_ids.reserve(setup_size);
+  for (std::size_t i = 0; i < setup_size; ++i) {
+    const lob::Side side = (i & 1U) == 0U ? lob::Side::Bid : lob::Side::Ask;
+    live_setup_ids.push_back(builder.add_setup(side, far_price(side, rng), random_qty(rng, 64)));
+  }
+
+  constexpr lob::OrderId kUnknownId = 1000000000ULL;
+  std::size_t step = 0;
+  while (builder.stream().timed.size() < count) {
+    const lob::OrderId live_id = live_setup_ids[rng.uniform(live_setup_ids.size())];
+    const lob::Side side = (rng.next() & 1ULL) == 0ULL ? lob::Side::Bid : lob::Side::Ask;
+    switch (step++ % 8U) {
+      case 0:
+        // Non-crossing resting add: overflows pooled reserved capacity once
+        // the setup phase has filled it.
+        builder.add_timed(side, far_price(side, rng), random_qty(rng, 64));
+        break;
+      case 1:
+        // Duplicate order ID: the setup ID is still live.
+        builder.add_timed_with_id(live_id, side, far_price(side, rng), random_qty(rng, 64));
+        break;
+      case 2:
+        // Invalid price.
+        builder.add_timed(side, 0, random_qty(rng, 64));
+        break;
+      case 3:
+        // Invalid quantity.
+        builder.add_timed(side, far_price(side, rng), 0);
+        break;
+      case 4:
+        // Cancel of an unknown order.
+        builder.cancel_timed(kUnknownId + step);
+        break;
+      case 5:
+        // Modify of an unknown order.
+        builder.modify_timed(kUnknownId + step, far_price(side, rng), random_qty(rng, 64));
+        break;
+      case 6:
+        // Modify of a live order with an invalid price.
+        builder.modify_timed(live_id, 0, random_qty(rng, 64));
+        break;
+      default:
+        // Modify of a live order with an invalid quantity.
+        builder.modify_timed(live_id, far_price(side, rng), 0);
+        break;
+    }
+  }
+  return builder.take();
+}
+
 WorkloadStream build_workload(WorkloadKind workload, std::size_t count, std::uint64_t seed) {
   switch (workload) {
     case WorkloadKind::AddOnly:
@@ -568,6 +651,8 @@ WorkloadStream build_workload(WorkloadKind workload, std::size_t count, std::uin
       return build_cancel_heavy(count, seed);
     case WorkloadKind::ModifyHeavy:
       return build_modify_heavy(count, seed);
+    case WorkloadKind::RejectHeavy:
+      return build_reject_heavy(count, seed);
   }
   throw std::runtime_error("unreachable workload");
 }
@@ -606,7 +691,14 @@ RunStats make_run_stats(std::size_t setup_events, std::size_t timed_events,
 template <typename Engine>
 RunStats run_engine(const WorkloadStream& stream, bool collect_latency, bool reuse_trades) {
   Engine book;
-  book.reserve_orders(stream.setup.size() + stream.timed.size());
+  // Reject-heavy reserves only the setup size so the pooled backend runs at
+  // full reserved capacity during the timed phase; the other backends treat
+  // the reservation as a hint only. Rejections are the measured behavior for
+  // this workload, so they are counted via engine statistics instead of
+  // aborting the run.
+  const bool reject_workload = stream.kind == WorkloadKind::RejectHeavy;
+  book.reserve_orders(reject_workload ? stream.setup.size()
+                                      : stream.setup.size() + stream.timed.size());
   std::vector<lob::Trade> trades;
   trades.reserve((stream.setup.size() + stream.timed.size()) / 2 + 1);
   std::vector<std::uint64_t> latencies;
@@ -635,7 +727,7 @@ RunStats run_engine(const WorkloadStream& stream, bool collect_latency, bool reu
     const auto event_start = collect_latency ? Clock::now() : Clock::time_point{};
     const lob::BookError error = book.process(event, trades);
     const auto event_end = collect_latency ? Clock::now() : Clock::time_point{};
-    if (error != lob::BookError::None) {
+    if (error != lob::BookError::None && !reject_workload) {
       throw std::runtime_error("timed event rejected");
     }
     if (collect_latency) {

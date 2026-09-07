@@ -27,6 +27,24 @@ Run a bounded smoke campaign locally:
 
 The fuzzer maps arbitrary bytes into add, cancel, and modify histories.
 
+## Continuous integration
+
+The Linux CI `fuzz` job (`.github/workflows/ci.yml`) configures with
+`clang++`, builds `orda_fuzz`, and runs the same bounded smoke:
+
+```sh
+cmake -S . -B build-fuzz -DLOB_BUILD_FUZZER=ON \
+  -DCMAKE_CXX_COMPILER=clang++ \
+  -DCMAKE_CXX_FLAGS=-fsanitize=address,undefined \
+  -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined
+cmake --build build-fuzz --target orda_fuzz --parallel
+./build-fuzz/orda_fuzz -runs=10000 -seed=305419896
+```
+
+The Apple Clang toolchain on macOS does not ship the libFuzzer runtime
+archive, so local macOS runs are not available and Linux CI remains the
+required gate for this target.
+
 It compares each event's error, trades, order-level book state, live-order
 count, and cumulative statistics.
 

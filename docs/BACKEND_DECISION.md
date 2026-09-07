@@ -47,3 +47,22 @@ tail distributions, and failure behavior.
 
 Until that gate is met, removing baseline would discard the independent control
 needed to interpret pooled changes.
+
+## Deferred evidence
+
+These gate items have no local substitute and stay open until run on the
+required machine:
+
+- Bare-metal Linux repeat with CPU affinity, fixed frequency policy,
+  multiple rounds, and `perf` counters. Prerequisite: a bare-metal Linux
+  host owned by whoever schedules the promotion review; hosted CI runners
+  are scheduler-functional evidence only.
+- Memory-footprint comparison. Prerequisite: a memory-measurement harness,
+  which does not exist yet; the allocation probe counts event-path `new`
+  calls only and is not a footprint.
+- Failure-behavior comparison. Prerequisite: a failure-injection harness,
+  which does not exist yet; allocator failure, crashes, and concurrent
+  access are outside every current campaign.
+
+No reject-heavy result may be cited until the `reject-heavy` workload and
+its differential oracle coverage both exist and pass.

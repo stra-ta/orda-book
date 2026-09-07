@@ -91,6 +91,60 @@ std::vector<lob::Event> generate_history(std::uint64_t seed, std::size_t count) 
   return events;
 }
 
+std::vector<lob::Event> generate_reject_history(std::uint64_t seed, std::size_t count) {
+  // Invalid-input storm: every rejection path (duplicate ID, invalid
+  // price/quantity, unknown cancel/modify target, invalid modify) is compared
+  // event-by-event against the reference engine. Prices stay far from the
+  // touch and inside the ladder's valid domain so all three backends agree
+  // with the reference on every error code. Valid adds use fresh IDs and
+  // never cross, so they always succeed and keep the live-ID pool exact.
+  Rng rng(seed);
+  std::vector<lob::Event> events;
+  std::vector<lob::OrderId> live_ids;
+  lob::OrderId next_id = 1;
+  events.reserve(count);
+
+  const auto far_price = [&rng](lob::Side side) {
+    const lob::Price base = side == lob::Side::Bid ? 99000 : 101000;
+    const lob::Price offset = static_cast<lob::Price>(rng.uniform(64));
+    return side == lob::Side::Bid ? base - offset : base + offset;
+  };
+
+  for (std::size_t index = 0; index < count; ++index) {
+    const std::size_t operation = rng.uniform(10);
+    const lob::Side side = (rng.next() & 1U) == 0U ? lob::Side::Bid : lob::Side::Ask;
+    const lob::Quantity qty = 1 + static_cast<lob::Quantity>(rng.uniform(32));
+
+    if (live_ids.empty() || operation < 3) {
+      const lob::OrderId id = next_id++;
+      live_ids.push_back(id);
+      events.push_back(add(id, side, far_price(side), qty));
+    } else if (operation == 3) {
+      events.push_back(add(next_id++, side, 0, qty));
+    } else if (operation == 4) {
+      events.push_back(add(next_id++, side, far_price(side), 0));
+    } else if (operation == 5) {
+      events.push_back(add(live_ids[rng.uniform(live_ids.size())], side, far_price(side), qty));
+    } else if (operation == 6) {
+      events.push_back(cancel(next_id + 1000000));
+    } else if (operation == 7) {
+      const std::size_t victim = rng.uniform(live_ids.size());
+      events.push_back(cancel(live_ids[victim]));
+      live_ids[victim] = live_ids.back();
+      live_ids.pop_back();
+    } else if (operation == 8) {
+      events.push_back(modify(live_ids[rng.uniform(live_ids.size())], 0, qty));
+    } else {
+      if ((rng.next() & 1U) == 0U) {
+        events.push_back(modify(next_id + 1000000, far_price(side), qty));
+      } else {
+        events.push_back(modify(live_ids[rng.uniform(live_ids.size())], far_price(side), 0));
+      }
+    }
+  }
+  return events;
+}
+
 void compare_trades(const std::vector<lob::Trade>& actual,
                     const std::vector<lob::Trade>& expected) {
   CHECK_EQ(actual.size(), expected.size());
@@ -158,9 +212,59 @@ TEST_CASE(differential_engine_matches_reference_across_fixed_histories) {
 }
 
 TEST_CASE(pooled_engine_matches_reference_across_fixed_histories) {
-  for (std::uint64_t seed = 1; seed <= 64; ++seed) {
+  for (std::uint64_t seed = 1; seed <= 256; ++seed) {
     run_differential_history<lob::PooledOrderBook>(generate_history(seed, 750));
   }
+}
+
+TEST_CASE(reject_histories_match_reference_on_all_backends) {
+  for (std::uint64_t seed = 1; seed <= 64; ++seed) {
+    const std::vector<lob::Event> events = generate_reject_history(seed, 300);
+    run_differential_history<lob::OrderBook>(events);
+    run_differential_history<lob::PooledOrderBook>(events);
+    run_differential_history<lob::LadderOrderBook>(events);
+  }
+}
+
+TEST_CASE(pooled_reject_heavy_capacity_path_rejects_only_when_full) {
+  // Mirrors the benchmark reject-heavy setup: a tight reservation is exactly
+  // filled, then further non-crossing adds must fail with CapacityExceeded
+  // while invalid inputs keep their usual errors and the book stays intact.
+  lob::PooledOrderBook book;
+  book.reserve_orders(8);
+  std::vector<lob::Trade> trades;
+
+  for (lob::OrderId id = 1; id <= 8; ++id) {
+    const lob::Side side = (id & 1U) == 0U ? lob::Side::Bid : lob::Side::Ask;
+    const lob::Price price = side == lob::Side::Bid ? 99000 : 101000;
+    CHECK_EQ(static_cast<int>(book.add_order(id, side, price, 1, trades)),
+             static_cast<int>(lob::BookError::None));
+  }
+  CHECK_EQ(book.live_order_count(), static_cast<std::size_t>(8));
+
+  for (lob::OrderId id = 9; id <= 24; ++id) {
+    CHECK_EQ(static_cast<int>(book.add_order(id, lob::Side::Bid, 99000, 1, trades)),
+             static_cast<int>(lob::BookError::CapacityExceeded));
+  }
+  CHECK_EQ(book.live_order_count(), static_cast<std::size_t>(8));
+  CHECK_TRUE(trades.empty());
+  CHECK_EQ(book.stats().rejected_requests, static_cast<std::size_t>(16));
+
+  // Invalid inputs at full capacity keep their specific errors.
+  CHECK_EQ(static_cast<int>(book.add_order(1, lob::Side::Bid, 99000, 1, trades)),
+           static_cast<int>(lob::BookError::DuplicateOrderId));
+  CHECK_EQ(static_cast<int>(book.add_order(100, lob::Side::Bid, 0, 1, trades)),
+           static_cast<int>(lob::BookError::InvalidPrice));
+  CHECK_EQ(static_cast<int>(book.add_order(101, lob::Side::Bid, 99000, 0, trades)),
+           static_cast<int>(lob::BookError::InvalidQuantity));
+  CHECK_EQ(static_cast<int>(book.cancel_order(1000000)),
+           static_cast<int>(lob::BookError::UnknownOrderId));
+  CHECK_EQ(book.live_order_count(), static_cast<std::size_t>(8));
+
+  // A crossing add still recycles a slot instead of rejecting.
+  CHECK_EQ(static_cast<int>(book.add_order(200, lob::Side::Ask, 99000, 8, trades)),
+           static_cast<int>(lob::BookError::None));
+  CHECK_EQ(trades.size(), static_cast<std::size_t>(4));
 }
 
 // The pooled capacity contract rejects a resting add only when no slot can be
@@ -256,7 +360,7 @@ TEST_CASE(pooled_partial_crossing_at_full_capacity_keeps_resting_order) {
 }
 
 TEST_CASE(ladder_engine_matches_reference_across_fixed_histories) {
-  for (std::uint64_t seed = 1; seed <= 32; ++seed) {
+  for (std::uint64_t seed = 1; seed <= 256; ++seed) {
     run_differential_history<lob::LadderOrderBook>(generate_history(seed, 750));
   }
 }
