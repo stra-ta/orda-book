@@ -3,8 +3,9 @@ name: Pages
 # Publishes the visualizer to https://stra-ta.github.io/orda-book/.
 #
 # The page runs in its static mode here. On load it probes /api/trace, finds no
-# engine behind it, and draws the checked-in trace instead. The dev server in
-# scripts/ is never part of the artifact.
+# engine behind it, and draws the two checked-in traces instead, which is what
+# the run switch swaps between. The dev server in scripts/ is never part of the
+# artifact.
 #
 # Repository Pages has to be enabled once with "GitHub Actions" as the source
 # before this can deploy. That step is manual: configure-pages can do it only
@@ -48,10 +49,13 @@ jobs:
           # type for Node, and the Markdown README is not a page.
           # No -f, so renaming one of them fails the deploy instead of quietly
           # publishing a test script to a public URL.
-          rm _site/README.md _site/package.json _site/check-depth.mjs _site/check-priority.mjs
-          # Fail here rather than deploy a site with no entry point behind it.
+          rm _site/README.md _site/package.json _site/check-depth.mjs _site/check-priority.mjs _site/check-source.mjs
+          # Fail here rather than deploy a site with no entry point behind it, and
+          # rather than deploy without the second trace, which the run switch
+          # needs and which would otherwise disappear without a word.
           test -f _site/index.html
           test -f _site/data/price-time-priority.json
+          test -f _site/data/queue-position.json
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 

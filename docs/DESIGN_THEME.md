@@ -34,8 +34,10 @@ Adding a colour means adding a meaning, and the page has no use for a third one.
 | `--leaf` | `#426849` | The accent: selection, fills, the bid side, primary control |
 | `--leaf-deep` | `#315638` | Leaf text on a leaf background |
 | `--leaf-wash` | `#e9f0e8` | The bid depth area, the selected row, the prediction block |
-| `--graphite` | `#252c27` | The matching-rule band at the foot of the book |
+| `--graphite` | `#252c27` | The one dark surface: the band that opens the source section |
 | `--graphite-2` | `#3d453f` | The ask side, where the bid side would be leaf |
+| `--band-label` | `#8fbf9d` | The section label on graphite |
+| `--band-text` | `#dfe4de` | The sentence that sits on graphite |
 | `--refused` | `#7c5341` | A refused event's label and flag |
 | `--refused-wash` | `#f6efe9` | A refused event's ground, and the load error |
 | `--sans` | system stack | Everything read as words |
@@ -43,12 +45,45 @@ Adding a colour means adding a meaning, and the page has no use for a third one.
 
 Measured contrast, all AA or better for body text:
 ink on panel 16.4:1, muted 6.6:1, subtle 5.0:1, leaf on panel 6.4:1,
-white on leaf 6.4:1, leaf-deep on leaf-wash 7.2:1, rule label on graphite 6.9:1.
+white on leaf 6.4:1, leaf-deep on leaf-wash 7.2:1, band label on graphite 6.9:1,
+band text on graphite 11.1:1, code ink on paper 15.4:1.
 
 `subtle` on `leaf-wash` is 4.3:1, so leaf-wash is never used as the background
 for `--subtle` text.
 The prediction and the selected row both use `--leaf-deep` or `--ink` for that
 reason.
+
+## The one dark surface
+
+The page has exactly one dark band, and it opens the source section: the part of
+the page that is not the replay but the engine behind it.
+
+It used to close the order book, restating the matching rule. That spent the
+heaviest surface on the page on the sentence the intro already carries. A dark
+band marks a change of kind, and it should carry the strongest claim the page
+has, which here is provenance: every number above came out of that code, and the
+page runs no matching logic of its own.
+
+If a second dark band is ever wanted, the answer is no. The first one works
+because it is the only one.
+
+## Diagrams
+
+`ARCHITECTURE_OVERVIEW.svg` uses the same tokens, and the file is small enough
+that it is worth saying how they map.
+
+The canvas is `--paper` and the four stage panels are `--panel` cards with a
+`--rule` border, the same relationship the page has between the page and a card.
+Nodes inside a panel are `--paper` again, which is what the code blocks do inside
+the source panel: a ruled block on a white card.
+
+The accent moves in a diagram. Leaf marks the flow, the numbers, and the subject
+of the figure, because a diagram has one subject and one direction and no reader
+has selected anything yet. It does not mark a selection there, and graphite marks
+nothing at all, because a diagram has no single band to put it on.
+
+Type is the same two families at the same relationship: sans for everything read
+as words, mono for the numbers. No webfont, as on the page.
 
 ## Type
 
@@ -59,6 +94,15 @@ Three sizes on any one screen, and two families.
 - Data: 11px to 14px mono, tabular numerals, for every price, size, id and count.
 - Panel labels: 10px uppercase with 0.14em tracking, in `--subtle`.
   There are three or four on a screen and nothing else is uppercase.
+
+The quoted code is the one place the mono font is not carrying a number.
+It is 11.5px on a wide screen and 11px below 900px, where the excerpt is stacked
+in a narrower column than the two-column form allows.
+It is also the only text on the page allowed to scroll sideways: a wrapped line
+of C++ is a line the reader has to reconstruct, so the block scrolls instead.
+When it does scroll it takes `tabindex`, so the reader can reach and scroll it
+from the keyboard, and only then, so a wide window does not add five stops to the
+tab order.
 
 The queue ticket is the exception worth naming: at 10.5px below 660px it is the
 smallest text on the page, because the id and its size must stay on one line
@@ -79,18 +123,59 @@ becomes one column in reading order: pick an event, read the book, then read
 what it did.
 
 The transport is one flex row that wraps: buttons, slider, counter, then the
-status and the keyboard hint at the far end. It is 58px on a laptop and 93px
-where the status wraps under the controls. Below 660px the slider takes its own
-row and the keyboard hint is dropped, because there are no arrow keys on a
-phone.
+keyboard hint at the far end. It is 58px on a laptop and 93px where the hint
+wraps under the controls. Below 660px the hint is dropped entirely, because
+there are no arrow keys on a phone.
+
+The source section is full width under the workbench, and its five excerpts run
+two columns above 1080px, the note beside the code, stacked below that. The
+breakpoint is where the longest quote stops fitting beside its note without the
+block scrolling on its own, which is about 880px of content.
+
+The parameter panel, which only the loopback dev server reveals, sits full width
+between the transport and the replay rather than in the rail. The book column
+cannot grow to match a card that tall, so in the rail it left the whole right
+column empty below the book: 566px of nothing at the widths where a reader would
+see it.
+
+Two things in the source section are not in the page's usual shape. The run switch sits
+under the intro, not in the transport, because the transport is a position within
+one run and the switch is which run, and one card holding both would make the
+control bar two things at once. It is the same scale as a control button and the
+pressed state is the only accent on the row. The trade-off block at the end of
+the source section is a `--paper` block on a `--panel` card with a rule border,
+the same treatment as a code excerpt, because it is prose about the same code
+rather than a new kind of thing.
 
 ## Boxes that hold still
 
-Card heights are fixed, not minimums, wherever the content varies by step:
-the selected event panel at 253px, the fills panel at 148px, and the ladder rows
-at a 66px floor.
-A box that resizes while the reader is stepping is a box they watch instead of
-the data.
+Two panels vary in content by step: the selected event panel and the fills panel
+below it. Both have to hold one height while the reader steps, or the reader is
+watching the layout instead of the data.
+
+Their height is measured, not written down. `measureRailBoxes()` in `app.js`
+renders every step's text and every step's fill list once, keeps the tallest, and
+fixes the two boxes there. The measurement runs per run and per width, so a run
+with no fills does not reserve room for two receipts, and a phone does not
+reserve what the text needs on a laptop. The stylesheet sets neither height.
+
+Hard-coding the worst case any run reaches was the first attempt, and it was the
+wrong trade. It kept the boxes still and left 40px of dead space at the densest
+step of the default run and 120px at the emptiest, which was most of the page's
+vertical slack.
+
+The prediction block and the `−` caption are still revealed with `visibility`
+rather than `display`, so the steps they appear on do not change their panel's
+content height before the measurement runs.
+
+The ladder rows keep a 70px floor rather than a fixed height, because the number
+of orders resting at one price is real data and a row has to hold them.
+70px is three orders, which is the most any shipped scenario reaches, and it is
+measured rather than guessed: a third order at one price is 4px taller than two,
+and a row that grows for it drags the caption, the history chart and the source
+section under it.
+The floor was 66px until that was measured against the rejection trace, where
+three bids rest at 100 on the last step.
 
 Two things in the rail vary by step and both are handled by reserving their space
 rather than by toggling them out of flow:
@@ -101,9 +186,11 @@ rather than by toggling them out of flow:
   it wraps to a second line, and a caption that grows by a line when a fill lands
   moves everything under it.
 
-Measured across every step of the default, modify and rejection traces, at
-1440, 1280, 1080, 1024, 920, 900, 700, 480, 390 and 320px: the book panel, the
-selected panel and the fills panel each hold one position and one height.
+Measured across every step of both runs at 1440, 1280, 1081, 1080, 1024, 900,
+768, 700, 660, 480, 390 and 320px, the book panel, the selected panel, the fills
+panel and the event tape each hold one position and one height, and nothing
+clips. The selected panel measures 229px at 1280 and 182px at 900, which is the
+same content needing less room in a wider box.
 
 ## Motion
 

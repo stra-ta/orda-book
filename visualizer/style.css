@@ -17,6 +17,10 @@
   --leaf-wash: #e9f0e8;
   --graphite: #252c27;
   --graphite-2: #3d453f;
+  /* The only text that sits on graphite. Named so the one dark surface stays
+     one surface rather than becoming a place where colours are invented. */
+  --band-label: #8fbf9d;
+  --band-text: #dfe4de;
   --refused: #7c5341;
   --refused-wash: #f6efe9;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
@@ -156,9 +160,63 @@ h1 {
   line-height: 1.62;
 }
 
+/* The counterfactual, offered where the intro makes the claim it supports. It
+   is hidden until the second trace is in hand, and both traces are fetched
+   before the first render, so the row does not arrive late and push the
+   transport down the page. */
+.intro-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 16px 0 0;
+}
+
+.intro-action[hidden] {
+  display: none;
+}
+
+.scenario-note {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.scenario-switch {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.scenario-button {
+  min-height: 27px;
+  padding: 0 11px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
+}
+
+.scenario-button:hover:not([aria-pressed="true"]) {
+  border-color: var(--subtle);
+  color: var(--ink);
+}
+
+/* Pressed is the current run, and it is the only thing on this row that carries
+   the accent, so which of the two is showing reads without colour blindness
+   help: the two labels are different words. */
+.scenario-button[aria-pressed="true"] {
+  border-color: var(--leaf);
+  background: var(--leaf-wash);
+  color: var(--leaf-deep);
+  font-weight: 600;
+}
+
 /* ---------- transport ---------- */
 
-/* One card, one row. The status and the hint sit at the far end of the same
+/* One card, one row. The counter and the hint sit at the far end of the same
    line as the controls and wrap below them only when the row runs out of room,
    which is what keeps the card a single object instead of a bar with a caption
    under it. */
@@ -225,16 +283,10 @@ h1 {
   max-width: 460px;
 }
 
-.progress-label,
-.event-count {
+.progress-label {
   color: var(--subtle);
   font-size: 11px;
   white-space: nowrap;
-}
-
-.event-count {
-  font-family: var(--mono);
-  font-size: 11px;
 }
 
 input[type="range"] {
@@ -262,9 +314,9 @@ input[type="range"] {
   white-space: nowrap;
 }
 
-/* Takes the whole remainder of the row when it fits beside the controls, and
-   wraps to a full line of its own when it does not. `flex: 1 1 100%` at the
-   narrow breakpoint is what sends it down. */
+/* Holds the arrow-key hint at the far end of the row. The current event is not
+   repeated here: the tape, the selected card and its summary already state it,
+   and the card's live region is what announces a step. */
 .transport-foot {
   display: flex;
   flex: 1 1 auto;
@@ -392,14 +444,14 @@ input[type="range"] {
 
 /* ---------- selected event ---------- */
 
-/* Fixed, not a floor. The summary runs to three lines and the prediction to
-   four, and the measured worst case across the default, modify and rejection
-   traces at the rail's narrowest width is 221px of content. A panel that grows
-   when the prediction appears pushes the fills panel down, so the box is sized
-   once and the content sits at the top. */
-.selected-panel {
-  height: 253px;
-}
+/* This panel and the fills panel below it are the two whose content varies by
+   step, and a box that resizes while the reader is stepping is a box they watch
+   instead of the data, so their heights are fixed before stepping starts.
+   measureRailBoxes() in app.js decides them, from the tallest step in the run on
+   screen. Hard-coding the worst case any run reaches kept them still but left
+   40px of dead space at the densest step of the default run and 120px at the
+   emptiest, which is most of the page's slack. Nothing here sets a height, so
+   the panels are content-sized until the trace arrives. */
 
 .event-summary {
   margin: 13px 0 8px;
@@ -452,11 +504,8 @@ input[type="range"] {
 
 /* ---------- fills ---------- */
 
-/* Fixed, not a floor: the worst case in any reachable scenario is two receipts,
-   and a box that grows when a fill lands is a box the reader watches move. */
-.trades-panel {
-  height: 148px;
-}
+/* Height set the same way as the selected panel above. The worst case in any
+   reachable scenario is two receipts, and this run may have none at all. */
 
 .empty-trades {
   margin: 13px 0 0;
@@ -508,8 +557,11 @@ input[type="range"] {
 
 /* ---------- order book ---------- */
 
+/* No side padding, so the price table and the two charts run the panel's full
+   width. The band that used to close this panel now opens the source section
+   below it, so the panel carries its own bottom padding again. */
 .book-panel {
-  padding: 16px 0 0;
+  padding: 16px 0 18px;
 }
 
 .book-heading {
@@ -570,8 +622,12 @@ input[type="range"] {
   display: grid;
 }
 
+/* Tall enough for three orders resting at one price, which is the most any
+   shipped scenario reaches. A row that grows when a third order arrives moves
+   the caption, the history chart and the source section under it by 4px, so the
+   floor is set at the measured worst case rather than at one ticket's worth. */
 .book-row {
-  min-height: 66px;
+  min-height: 70px;
   padding: 0 16px;
   border-bottom: 1px solid var(--rule-soft);
 }
@@ -814,10 +870,16 @@ input[type="range"] {
   margin: 18px 0 0;
 }
 
+/* The caption is the chart's label, so it sits above it and the panel ends on
+   the drawing rather than on a line of grey text. */
+.history-caption {
+  margin: 0 0 4px;
+}
+
 .history-chart {
   display: block;
   width: calc(100% - 32px);
-  height: 70px;
+  height: 96px;
   margin: 0 16px;
   overflow: visible;
 }
@@ -856,33 +918,154 @@ input[type="range"] {
   shape-rendering: crispEdges;
 }
 
-.matching-rule {
+/* ---------- the code behind the numbers ---------- */
+
+/* The page's one dark surface. It opens the source section instead of closing
+   the book, so it marks the change of kind from the replay to the engine that
+   produced it, and it carries the provenance claim rather than the matching
+   rule, which the intro already states. */
+.code-panel {
+  overflow: hidden;
+  margin-top: 16px;
+  padding: 0;
+}
+
+.code-band {
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  margin: 18px -1px 0;
+  flex-wrap: wrap;
+  gap: 5px 12px;
   padding: 14px 17px 16px;
-  border-radius: 0 0 5px 5px;
   background: var(--graphite);
 }
 
-.rule-label {
+.band-label {
   flex: 0 0 auto;
-  color: #8fbf9d;
+  margin: 0;
+  color: var(--band-label);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.matching-rule p {
+.code-band p {
   margin: 0;
-  color: #dfe4de;
+  color: var(--band-text);
   font-size: 12.5px;
   line-height: 1.45;
 }
 
+.code-band code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.code-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 6px 16px 0;
+  list-style: none;
+}
+
+/* The excerpts say what the code does. This says why it is shaped that way,
+   which is the part a reader cannot get from four lines of a header. */
+.code-tradeoff {
+  margin: 4px 16px 16px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.code-tradeoff-label {
+  margin: 0 0 9px;
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.code-tradeoff p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.code-tradeoff p + p {
+  margin-top: 9px;
+}
+
+.code-tradeoff code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.code-item {
+  display: grid;
+  grid-template-columns: minmax(0, 258px) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 26px;
+  padding: 14px 0;
+}
+
+.code-item + .code-item {
+  border-top: 1px solid var(--rule-soft);
+}
+
+.code-note {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.code-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.code-ref {
+  color: var(--subtle);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.code-ref:hover {
+  color: var(--leaf-deep);
+}
+
+/* Scrolls rather than wraps. A wrapped line of C++ is a line the reader has to
+   reconstruct, and the longest quote here is 86 characters, which needs about
+   600px of monospace. */
+.code-block {
+  min-width: 0;
+  margin: 0;
+  padding: 11px 13px;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
 /* ---------- parameters (loopback dev server only) ---------- */
+
+/* Full width between the transport and the replay, not a rail card. The book
+   column cannot grow to match a card this tall, so in the rail it left the
+   whole right column empty below the book. */
+.parameter-panel {
+  margin-top: 16px;
+}
 
 .parameter-panel[hidden] {
   display: none;
@@ -890,8 +1073,8 @@ input[type="range"] {
 
 .parameter-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px 14px;
   margin-top: 14px;
 }
 
@@ -994,6 +1177,14 @@ input[type="range"] {
     grid-template-columns: minmax(230px, 258px) minmax(0, 1fr);
     gap: 14px;
   }
+
+  /* Two columns of code need about 880px before the longest quote fits beside
+     its note without the block scrolling on its own. Below that the note goes
+     over the excerpt and the code gets the full width. */
+  .code-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
 }
 
 /* Below this the ladder's five columns stop being legible, so the rail
@@ -1002,7 +1193,7 @@ input[type="range"] {
 @media (max-width: 900px) {
   .workbench {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "tape" "book" "selected" "trades" "params";
+    grid-template-areas: "tape" "book" "selected" "trades";
     gap: 14px;
     margin-top: 16px;
   }
@@ -1015,7 +1206,6 @@ input[type="range"] {
   .book-panel { grid-area: book; }
   .selected-panel { grid-area: selected; }
   .trades-panel { grid-area: trades; }
-  .parameter-panel { grid-area: params; }
 
   .event-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1023,6 +1213,13 @@ input[type="range"] {
 
   .intro-copy {
     max-width: none;
+  }
+
+  /* The excerpt is stacked and full width by here, so one step down in size
+     keeps even the longest quote inside the block instead of behind a
+     scrollbar. Below this the block scrolls rather than wraps, as code should. */
+  .code-block {
+    font-size: 11px;
   }
 }
 
@@ -1072,7 +1269,7 @@ input[type="range"] {
   }
 
   .book-panel {
-    padding: 14px 0 0;
+    padding: 14px 0 16px;
   }
 
   .book-heading {
@@ -1096,6 +1293,10 @@ input[type="range"] {
       minmax(0, 1.4fr) minmax(0, 0.85fr) 44px minmax(0, 0.85fr) minmax(0, 1.4fr);
   }
 
+  .code-block {
+    font-size: 11px;
+  }
+
   .book-columns,
   .book-row,
   .depth-axis,
@@ -1105,14 +1306,28 @@ input[type="range"] {
     padding-left: 14px;
   }
 
+  /* The panel's own padding is set below, so the band still runs edge to edge
+     and the padding moves inside to 14px. */
+  .code-panel {
+    padding: 0;
+  }
+
+  .code-list {
+    padding: 4px 14px 14px;
+  }
+
+  .code-item {
+    padding: 13px 0;
+  }
+
   .book-columns {
     font-size: 8.5px;
     letter-spacing: 0.05em;
   }
 
-  .book-row {
-    min-height: 60px;
-  }
+  /* The row floor stays at 70px here. A phone wants the ladder shorter, but the
+     narrow ticket is the same height, and a row that grows when a third order
+     lands moves everything under it. */
 
   .side-cell {
     padding: 8px 5px;
@@ -1141,16 +1356,10 @@ input[type="range"] {
     white-space: nowrap;
   }
 
-  /* Not enough room for the status and the hint beside the controls, so they
-     take the line under the slider, sharing it with the counter. The keyboard
-     hint goes entirely: there are no arrow keys at this width. */
-  .keyboard-hint {
-    display: none;
-  }
-
+  /* There are no arrow keys at this width, so the hint and its row are gone and
+     the card is buttons, slider, counter. */
   .transport-foot {
-    flex: 1 1 auto;
-    justify-content: flex-start;
+    display: none;
   }
 
   /* Narrow columns leave the deepest tip label only a few pixels from the queue
@@ -1177,10 +1386,6 @@ input[type="range"] {
 
   .event-label {
     font-size: 12px;
-  }
-
-  .trades-panel {
-    min-height: auto;
   }
 }
 

@@ -107,6 +107,21 @@ export function depthByEvent(frames, priceLevels) {
   return { bid, ask };
 }
 
+// A step line: a value holds until the next event, then changes at that event's
+// own x. Stepping one event early is the easy mistake here and it misstates when
+// the book changed, which is the only thing this chart is for. The path is built
+// here rather than in the page so the check can assert where each step lands.
+export function stepLinePath(points) {
+  if (points.length === 0) return "";
+  const at = (value) => Number(value.toFixed(2));
+  let path = `M ${at(points[0].x)} ${at(points[0].y)}`;
+  for (let index = 1; index < points.length; index += 1) {
+    path += ` L ${at(points[index].x)} ${at(points[index - 1].y)}`;
+    path += ` L ${at(points[index].x)} ${at(points[index].y)}`;
+  }
+  return path;
+}
+
 // The event text the parameter panel sends to the engine. Order 1 and order 2
 // share a price by default so the price-time lesson is the one on screen.
 export function buildScenario({

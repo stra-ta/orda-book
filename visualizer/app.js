@@ -1,7 +1,8 @@
-import { buildScenario, depthByEvent, depthProfile, groupOrders, integerText, priceScale } from "./trace.mjs";
+import {
+  buildScenario, depthByEvent, depthProfile, groupOrders, integerText, priceScale, stepLinePath,
+} from "./trace.mjs";
 
 const eventList = document.querySelector("#event-list");
-const eventCount = document.querySelector("#event-count");
 const selectedTitle = document.querySelector("#selected-title");
 const eventSummary = document.querySelector("#event-summary");
 const eventExplanation = document.querySelector("#event-explanation");
@@ -22,10 +23,13 @@ const previousButton = document.querySelector("#previous-button");
 const playButton = document.querySelector("#play-button");
 const nextButton = document.querySelector("#next-button");
 const stepSlider = document.querySelector("#step-slider");
-const playbackStatus = document.querySelector("#playback-status");
 const loadError = document.querySelector("#load-error");
 const workbench = document.querySelector(".workbench");
 const parameterPanel = document.querySelector("#parameter-panel");
+const scenarioAction = document.querySelector("#scenario-action");
+const scenarioButtons = [...document.querySelectorAll(".scenario-button")];
+const selectedPanel = document.querySelector(".selected-panel");
+const tradesPanel = document.querySelector(".trades-panel");
 
 const parameterFields = {
   buy1Size: document.querySelector("#param-buy1-size"),
@@ -40,6 +44,12 @@ const parameterFields = {
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 let frames = [];
+// The hosted page offers the counterfactual as a second checked-in trace rather
+// than as a re-run of the engine. The dev server keeps the switch hidden,
+// because the parameter panel there can already build both runs.
+let defaultFrames = [];
+let alternateFrames = null;
+let showingAlternate = false;
 let currentStep = 0;
 let playbackTimer = null;
 let priceLevels = [];
@@ -512,11 +522,10 @@ function renderHistory(reveal = false) {
 
   if (shown > 0) {
     for (const [values, side] of [[history.bid, "bid"], [history.ask, "ask"]]) {
-      let path = `M ${xOf(0).toFixed(2)} ${yOf(values[0]).toFixed(2)}`;
-      for (let index = 0; index < shown - 1; index += 1) {
-        path += ` L ${xOf(index).toFixed(2)} ${yOf(values[index + 1]).toFixed(2)}`;
-        path += ` L ${xOf(index + 1).toFixed(2)} ${yOf(values[index + 1]).toFixed(2)}`;
-      }
+      const path = stepLinePath(Array.from({ length: shown }, (_, index) => ({
+        x: xOf(index),
+        y: yOf(values[index]),
+      })));
       const line = svgPath(`history-line history-line-${side}`, path);
       depthHistoryChart.append(line);
       if (reveal) drawEdgeIn(line);
@@ -677,17 +686,67 @@ function stopPlayback() {
   playButton.setAttribute("aria-pressed", "false");
 }
 
+// The text half of a step: what happened, and the question to answer before the
+// next one. Split out because sizing the rail boxes means rendering every step's
+// text once, not only the one on screen.
+function renderStepText(frame) {
+  const [summary, explanation] = describeEvent(frame);
+  selectedTitle.textContent = eventHeadline(frame);
+  eventSummary.textContent = summary;
+  eventExplanation.textContent = explanation;
+
+  // Ask the reader to commit before the answer appears. The question is only
+  // fair when the next event actually has a queue to choose from, so it is
+  // driven by the trace: more than one resting order gets filled. It is revealed
+  // rather than shown so the panel keeps one height and the rail does not shift
+  // as the reader steps.
+  const nextFrame = frames[frame.step + 1];
+  const restingTouched = new Set(nextFrame?.trades.map((trade) => trade.restingOrderId) ?? []);
+  if (restingTouched.size > 1) {
+    prediction.classList.add("is-asked");
+    predictionText.textContent = `Next: ${eventLabel(nextFrame.event)}. Which resting order fills first?`;
+  } else {
+    prediction.classList.remove("is-asked");
+    predictionText.textContent = "";
+  }
+}
+
+// A box that resizes while the reader is stepping is a box they watch instead of
+// the data, so these two are fixed before stepping starts. Fixing them to the
+// worst case any run reaches still left 40px of dead space at the densest step
+// and much more everywhere else, so the height is measured from the run on
+// screen: every step's text is rendered once, the tallest is kept, and the box
+// is fixed there.
+function measureRailBoxes() {
+  selectedPanel.style.height = "auto";
+  tradesPanel.style.height = "auto";
+
+  let tallestSelected = 0;
+  let tallestFills = 0;
+  for (const frame of frames) {
+    renderStepText(frame);
+    tallestSelected = Math.max(tallestSelected, selectedPanel.scrollHeight);
+    renderTrades(frame, false);
+    tallestFills = Math.max(tallestFills, tradesPanel.scrollHeight);
+  }
+
+  // Put the step that is actually on screen back before fixing the heights, or
+  // the measuring pass leaves the last frame's text behind.
+  renderStepText(frames[currentStep]);
+  renderTrades(frames[currentStep], false);
+
+  selectedPanel.style.height = `${tallestSelected}px`;
+  tradesPanel.style.height = `${tallestFills}px`;
+}
+
 function setStep(step, { animate = false, keepPlayback = false } = {}) {
   if (!keepPlayback) stopPlayback();
   const previousFrame = frames[currentStep];
   currentStep = Math.max(0, Math.min(step, frames.length - 1));
   const frame = frames[currentStep];
   const shouldAnimate = animate && frame.step !== previousFrame?.step;
-  const [summary, explanation] = describeEvent(frame);
 
-  selectedTitle.textContent = eventHeadline(frame);
-  eventSummary.textContent = summary;
-  eventExplanation.textContent = explanation;
+  renderStepText(frame);
   stepNumber.textContent = `${currentStep} / ${frames.length - 1}`;
   stepSlider.value = String(currentStep);
   stepSlider.setAttribute("aria-valuetext", currentStep === 0
@@ -699,29 +758,6 @@ function setStep(step, { animate = false, keepPlayback = false } = {}) {
   workbench.classList.toggle("animate-step", shouldAnimate);
   renderBook(frame, previousFrame, shouldAnimate);
   renderTrades(frame, shouldAnimate);
-
-  // Ask the reader to commit before the answer appears. The question is only
-  // fair when the next event actually has a queue to choose from, so it is
-  // driven by the trace: more than one resting order gets filled.
-  const nextFrame = frames[currentStep + 1];
-  const restingTouched = new Set(nextFrame?.trades.map((trade) => trade.restingOrderId) ?? []);
-  // The question is asked only when the next event fills against more than one
-  // resting order, so it is never asked when there is no queue decision to
-  // make. It is revealed rather than shown so the panel keeps one height and
-  // the rail does not shift as the reader steps.
-  if (restingTouched.size > 1) {
-    prediction.classList.add("is-asked");
-    predictionText.textContent = `Next: ${eventLabel(nextFrame.event)}. Which resting order fills first?`;
-  } else {
-    prediction.classList.remove("is-asked");
-    predictionText.textContent = "";
-  }
-
-  // The step number is already on screen in the transport, so this line only
-  // carries the event and whether the engine refused it.
-  playbackStatus.textContent = currentStep === 0
-    ? "Empty book"
-    : eventLabel(frame.event) + (frame.accepted === false ? " · refused by the engine" : "");
 }
 
 function startPlayback() {
@@ -747,9 +783,27 @@ playButton.addEventListener("click", () => {
 });
 stepSlider.addEventListener("input", () => setStep(Number(stepSlider.value)));
 
+for (const button of scenarioButtons) {
+  button.addEventListener("click", () => {
+    const wantsAlternate = button.dataset.trace === "queue-position";
+    const next = wantsAlternate ? alternateFrames : defaultFrames;
+    if (!next || wantsAlternate === showingAlternate) return;
+    showingAlternate = wantsAlternate;
+    stopPlayback();
+    for (const other of scenarioButtons) {
+      other.setAttribute("aria-pressed", String(other === button));
+    }
+    frames = next;
+    renderTrace();
+  });
+}
+
 document.addEventListener("keydown", (event) => {
   if (event.altKey || event.ctrlKey || event.metaKey || event.target instanceof HTMLInputElement ||
       event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) return;
+  // A focused code excerpt scrolls with the arrow keys, and that is not also a
+  // request to step the replay.
+  if (event.target instanceof Element && event.target.closest(".code-block")) return;
   if (event.key === "ArrowLeft") {
     event.preventDefault();
     setStep(currentStep - 1);
@@ -766,16 +820,51 @@ new ResizeObserver(() => {
   }
 }).observe(ladderWrap);
 
-function adoptTrace(trace) {
-  frames = validateTrace(trace);
+// A code excerpt wider than its box can only be read by scrolling it, and a
+// scroll container that cannot take focus cannot be scrolled from the keyboard.
+// The attribute is only set while a block actually overflows, so a wide window
+// does not add five dead stops to the tab order.
+function syncCodeScrollability() {
+  for (const block of document.querySelectorAll(".code-block")) {
+    if (block.scrollWidth > block.clientWidth + 1) {
+      block.setAttribute("tabindex", "0");
+    } else {
+      block.removeAttribute("tabindex");
+    }
+  }
+}
+
+new ResizeObserver(syncCodeScrollability).observe(document.querySelector(".code-panel"));
+syncCodeScrollability();
+
+// Text wraps differently at a different width, so the tallest step in a run can
+// change with the viewport. Only a width change triggers a re-measure, which
+// also stops the height it sets from feeding back into another measurement.
+let measuredWidth = 0;
+new ResizeObserver(([entry]) => {
+  const width = Math.round(entry.contentRect.width);
+  if (frames.length === 0 || width === measuredWidth) return;
+  measuredWidth = width;
+  measureRailBoxes();
+}).observe(document.documentElement);
+
+// Everything a fresh set of frames needs, with the frames already validated and
+// in place. Split out so switching between two checked-in traces does not have
+// to re-validate one of them.
+function renderTrace() {
   prepareBookScale();
   renderAxis();
-  eventCount.textContent = `${frames.length - 1} events`;
   stepSlider.max = String(frames.length - 1);
   currentStep = 0;
   loadError.hidden = true;
   renderTimeline();
+  measureRailBoxes();
   setStep(0);
+}
+
+function adoptTrace(trace) {
+  frames = validateTrace(trace);
+  renderTrace();
 }
 
 function readParameters() {
@@ -834,24 +923,42 @@ async function probeLiveMode() {
   }
 }
 
-async function loadStaticTrace() {
+// Returns the parsed trace, or null when it could not be fetched or parsed.
+// Only the default trace reports a failure: a page with one run is complete,
+// and the second run is an offer rather than a requirement.
+async function fetchTrace(path, { required }) {
   let response;
   try {
-    response = await fetch("./data/price-time-priority.json");
+    response = await fetch(path);
   } catch {
-    showLoadError("Couldn't reach the replay file. Serve the visualizer folder over HTTP, then refresh.");
-    return;
+    if (required) showLoadError("Couldn't reach the replay file. Serve the visualizer folder over HTTP, then refresh.");
+    return null;
   }
   if (!response.ok) {
-    showLoadError(`The replay file is missing (HTTP ${response.status}). Regenerate it from the engine, then refresh.`);
-    return;
+    if (required) showLoadError(`The replay file is missing (HTTP ${response.status}). Regenerate it from the engine, then refresh.`);
+    return null;
   }
   try {
-    adoptTrace(await response.json());
+    return validateTrace(await response.json());
   } catch (error) {
-    showLoadError("The replay file doesn't match what this page expects. Regenerate it from the engine, then refresh.");
-    console.error("orda-book replay validation failed", error);
+    if (required) showLoadError("The replay file doesn't match what this page expects. Regenerate it from the engine, then refresh.");
+    console.error(`orda-book replay validation failed for ${path}`, error);
+    return null;
   }
+}
+
+async function loadStaticTrace() {
+  const trace = await fetchTrace("./data/price-time-priority.json", { required: true });
+  if (!trace) return;
+  // Both runs are in hand before the first render, so the switch is either there
+  // with the page or not there at all, rather than arriving and moving the
+  // transport down once the reader has started reading.
+  alternateFrames = await fetchTrace("./data/queue-position.json", { required: false });
+  if (alternateFrames) scenarioAction.hidden = false;
+  showingAlternate = false;
+  defaultFrames = trace;
+  frames = trace;
+  renderTrace();
 }
 
 async function loadReplay() {
@@ -868,8 +975,6 @@ async function loadReplay() {
 function showLoadError(message) {
   loadError.hidden = false;
   loadError.textContent = message;
-  eventCount.textContent = "Unavailable";
-  playbackStatus.textContent = "Replay unavailable";
   previousButton.disabled = true;
   nextButton.disabled = true;
   playButton.disabled = true;

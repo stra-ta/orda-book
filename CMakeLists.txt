@@ -144,8 +144,16 @@ if(LOB_NODE)
     NAME visualizer_script_syntax
     COMMAND ${LOB_NODE} --check "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/app.js"
   )
+
+  # The page quotes five line ranges from src/ under the book. Editing the
+  # matcher would otherwise leave the page showing the old lines at the old line
+  # numbers, with a permalink that still resolves, which fails silently.
+  add_test(
+    NAME visualizer_source_excerpts
+    COMMAND ${LOB_NODE} "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/check-source.mjs"
+  )
 else()
-  message(STATUS "node not found, skipping the visualizer depth, priority, and syntax tests")
+  message(STATUS "node not found, skipping the visualizer depth, priority, source, and syntax tests")
 endif()
 
 if(LOB_BUILD_FUZZER)

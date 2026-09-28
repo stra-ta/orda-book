@@ -22,8 +22,15 @@
         <h1 id="page-title">Why did that order fill first?</h1>
         <div class="intro-copy">
           <p>An order book is the queue of orders waiting to trade: buys on one side, sells on the other, each with a price and a size. Anything that can trade does so at the price already in the book, and the rest wait in line. Better prices go first, meaning the highest buy or the lowest sell, and at the same price the older order goes first.</p>
-          <p>Below is one small example, one event at a time. Every queue, price and fill comes from the <a class="inline-link" href="https://github.com/stra-ta/orda-book">C++ matcher in the orda-book project</a>, and the prices are invented for the example.</p>
+          <p>Below is one small example, one event at a time. The prices are invented for the example, and the section under the book shows the code that produced every number in it.</p>
         </div>
+        <p class="intro-action" id="scenario-action" hidden>
+          <span class="scenario-note">The same four units fill in a different order when the older bid is re-sent before the sell arrives.</span>
+          <span class="scenario-switch" role="group" aria-label="Which run to replay">
+            <button class="scenario-button" type="button" data-trace="default" aria-pressed="true">As written</button>
+            <button class="scenario-button" type="button" data-trace="queue-position" aria-pressed="false">Order 1 re-sent</button>
+          </span>
+        </p>
       </section>
 
       <!-- The transport sits above the instrument, so stepping never needs a
@@ -37,21 +44,43 @@
         </div>
         <label class="progress-control" for="step-slider">
           <span class="progress-label">Replay position</span>
-          <input id="step-slider" type="range" min="0" max="6" value="0" step="1" aria-valuetext="Start of replay">
+          <input id="step-slider" type="range" min="0" max="0" value="0" step="1" aria-valuetext="Start of replay">
         </label>
-        <p class="step-counter"><span class="step-number" id="step-number">0 / 6</span></p>
-        <p class="transport-foot">
-          <span id="playback-status" aria-live="polite">Empty book</span>
-          <span class="keyboard-hint">← and → step through</span>
-        </p>
+        <p class="step-counter"><span class="step-number" id="step-number">0 / 0</span></p>
+        <p class="transport-foot"><span class="keyboard-hint">← and → step through</span></p>
       </section>
+
+      <!-- Reachable only next to the loopback dev server, so the hosted page
+           shows no controls it cannot honour. It sits outside the workbench
+           because the book column cannot grow to match it, and a card this tall
+           in the rail left the whole right column empty. -->
+      <form class="panel parameter-panel" id="parameter-panel" hidden>
+        <h2 class="panel-label">Change the numbers</h2>
+        <div class="parameter-grid">
+          <label>First buy size<input id="param-buy1-size" type="number" min="1" max="999" step="1" value="3"></label>
+          <label>Second buy size<input id="param-buy2-size" type="number" min="1" max="999" step="1" value="2"></label>
+          <label>Second buy price<input id="param-buy2-price" type="number" min="1" max="9999" step="1" value="100"></label>
+          <label>Sell price<input id="param-sell-price" type="number" min="1" max="9999" step="1" value="100"></label>
+          <label>Sell size<input id="param-sell-size" type="number" min="1" max="999" step="1" value="4"></label>
+          <label>Sell type
+            <select id="param-sell-type">
+              <option value="LIMIT">Limit</option>
+              <option value="MARKET">Market</option>
+              <option value="IOC">Immediate or cancel</option>
+              <option value="FOK">Fill or kill</option>
+              <option value="POST_ONLY">Post only</option>
+            </select>
+          </label>
+        </div>
+        <label class="parameter-toggle"><input id="param-modify" type="checkbox"> Modify buy order 1 first</label>
+        <p class="parameter-note">Every change is replayed by the C++ matcher. A change is a cancel and replace, so order 1 goes to the back of its price queue.</p>
+      </form>
 
       <section class="workbench" aria-label="Price-time matching replay">
         <div class="rail">
           <section class="panel event-panel" aria-labelledby="event-list-title">
             <div class="panel-heading">
               <h2 class="panel-label" id="event-list-title">Events</h2>
-              <span class="event-count" id="event-count">Loading</span>
             </div>
             <ol class="event-list" id="event-list" aria-label="Replay steps"></ol>
           </section>
@@ -71,30 +100,6 @@
             <p class="empty-trades" id="empty-trades">No fill on this step.</p>
             <ol class="trade-list" id="trade-list" aria-label="Fills created by the selected event"></ol>
           </section>
-
-          <!-- Reachable only next to the loopback dev server, so the hosted page
-               shows no controls it cannot honour. -->
-          <form class="panel parameter-panel" id="parameter-panel" hidden>
-            <h2 class="panel-label">Change the numbers</h2>
-            <div class="parameter-grid">
-              <label>First buy size<input id="param-buy1-size" type="number" min="1" max="999" step="1" value="3"></label>
-              <label>Second buy size<input id="param-buy2-size" type="number" min="1" max="999" step="1" value="2"></label>
-              <label>Second buy price<input id="param-buy2-price" type="number" min="1" max="9999" step="1" value="100"></label>
-              <label>Sell price<input id="param-sell-price" type="number" min="1" max="9999" step="1" value="100"></label>
-              <label>Sell size<input id="param-sell-size" type="number" min="1" max="999" step="1" value="4"></label>
-              <label>Sell type
-                <select id="param-sell-type">
-                  <option value="LIMIT">Limit</option>
-                  <option value="MARKET">Market</option>
-                  <option value="IOC">Immediate or cancel</option>
-                  <option value="FOK">Fill or kill</option>
-                  <option value="POST_ONLY">Post only</option>
-                </select>
-              </label>
-            </div>
-            <label class="parameter-toggle"><input id="param-modify" type="checkbox"> Modify buy order 1 first</label>
-            <p class="parameter-note">Every change is replayed by the C++ matcher. A change is a cancel and replace, so order 1 goes to the back of its price queue.</p>
-          </form>
         </div>
 
         <section class="panel book-panel" aria-labelledby="book-title">
@@ -121,15 +126,75 @@
           <p class="axis-caption">Bar length is size from the touch, summed outward.<span class="caption-note" id="delta-note"> A − marks size the order just filled.</span></p>
 
           <div class="depth-history">
-            <svg class="history-chart" id="depth-history-chart" role="img"></svg>
             <p class="history-caption">Cumulative depth after each event, in event order, not time</p>
-          </div>
-
-          <div class="matching-rule">
-            <span class="rule-label">Matching rule</span>
-            <p>Best price first. At the same price, the oldest order goes first.</p>
+            <svg class="history-chart" id="depth-history-chart" role="img"></svg>
           </div>
         </section>
+      </section>
+
+      <!-- The code behind the numbers above. Every excerpt is a permalink to the
+           exact lines it quotes at the commit this page was cut from, so the
+           quote and the link cannot drift apart. -->
+      <section class="panel code-panel" aria-labelledby="code-title">
+        <div class="code-band">
+          <h2 class="band-label" id="code-title">Read the matcher</h2>
+          <p>Every queue, price and fill above is what <code>lob::OrderBook</code> returned when <code>orda_replay</code> replayed the scenario. This page runs no matching logic of its own.</p>
+        </div>
+        <ol class="code-list">
+          <li class="code-item">
+            <div class="code-note">
+              <p>Prices sort best first on each side, so the first level in the map is the best price on that side.</p>
+              <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.hpp#L49-L50">order_book.hpp:49</a>
+            </div>
+            <pre class="code-block"><code>  using BidLevels = std::map&lt;Price, PriceLevel, std::greater&lt;Price&gt;&gt;;
+  using AskLevels = std::map&lt;Price, PriceLevel, std::less&lt;Price&gt;&gt;;</code></pre>
+          </li>
+          <li class="code-item">
+            <div class="code-note">
+              <p>A price level is a list in arrival order, next to the size resting at that price.</p>
+              <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.hpp#L43-L47">order_book.hpp:43</a>
+            </div>
+            <pre class="code-block"><code>  struct PriceLevel {
+    Price price{};
+    Quantity total_qty{};
+    std::list&lt;Order&gt; orders;
+  };</code></pre>
+          </li>
+          <li class="code-item">
+            <div class="code-note">
+              <p>A new order joins the back of its level. Arrival order is the order the list is in.</p>
+              <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L33-L34">order_book.cpp:33</a>
+            </div>
+            <pre class="code-block"><code>  PriceLevel&amp; level = ensure_level(side, price);
+  level.orders.push_back(Order{order_id, side, price, qty});</code></pre>
+          </li>
+          <li class="code-item">
+            <div class="code-note">
+              <p>A fill always takes the front, so the oldest order at the best price goes first.</p>
+              <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L93-L94">order_book.cpp:93</a>
+            </div>
+            <pre class="code-block"><code>        Order&amp; resting = level.orders.front();
+        const Quantity fill_qty = std::min(incoming_qty, resting.qty);</code></pre>
+          </li>
+          <li class="code-item">
+            <div class="code-note">
+              <p>An accepted modify removes the order first and then matches the replacement, so a remainder rests at the back of its price queue.</p>
+              <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L272-L278">order_book.cpp:272</a>
+            </div>
+            <pre class="code-block"><code>  const Side side = it-&gt;second.order_it-&gt;side;
+  remove_order(order_id, it-&gt;second);
+
+  const Quantity remaining = match_incoming(order_id, side, new_price, new_qty, trades);
+  if (remaining &gt; 0) {
+    add_resting_order(order_id, side, new_price, remaining);
+  }</code></pre>
+          </li>
+        </ol>
+        <div class="code-tradeoff">
+          <h3 class="code-tradeoff-label">Why a map and a list</h3>
+          <p>The ordered map puts the best price first on each side, so matching walks outward from the touch without searching for it, and the list inside a level keeps arrival order: appending is constant time and a fill takes the front. Because a list never moves its existing elements, the order index can hold an iterator straight to the order, so a cancel unlinks in constant time too.</p>
+          <p>That is what it costs. A level lookup is O(log L) in the number of distinct prices, and both containers are node-based, so every order and every level is its own small allocation and the book is scattered rather than contiguous. The other two backends in the repository trade differently: <code>pooled_order_book</code> preallocates order slots, and <code>ladder_order_book</code> replaces the map with a bounded price array. The baseline is the one whose correctness is easiest to argue, which is why this page steps through it.</p>
+        </div>
       </section>
 
       <p class="load-error" id="load-error" role="alert" hidden></p>

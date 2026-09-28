@@ -9,7 +9,7 @@
 // Run with: node visualizer/check-depth.mjs <trace.json>
 
 import { readFileSync } from "node:fs";
-import { depthByEvent, depthProfile, priceScale } from "./trace.mjs";
+import { depthByEvent, depthProfile, priceScale, stepLinePath } from "./trace.mjs";
 
 const tracePath = process.argv[2];
 if (!tracePath) {
@@ -124,6 +124,41 @@ for (const [index, frame] of frames.entries()) {
     `step ${index}: history chart says bid ${history.bid[index]} ask ${history.ask[index]}, ` +
     `ladder says bid ${bidDepth(frame)} ask ${askDepth(frame)}`,
   );
+}
+
+// Where the history chart puts each step. The values above can all be right
+// while the drawing is still wrong: stepping one event early shows the book
+// losing size before the event that lost it, which reads as a different story.
+{
+  const points = [
+    { x: 0, y: 10 },
+    { x: 10, y: 4 },
+    { x: 20, y: 4 },
+    { x: 30, y: 7 },
+  ];
+  const segments = [...stepLinePath(points).matchAll(/L (-?[\d.]+) (-?[\d.]+)/g)]
+    .map((match) => ({ x: Number(match[1]), y: Number(match[2]) }));
+  check(
+    segments.length === (points.length - 1) * 2,
+    `the step line drew ${segments.length} segments for ${points.length} points`,
+  );
+  // Each point after the first contributes a hold at the old value and then the
+  // change, both at that point's own x. A step at the previous x fails here.
+  for (let index = 1; index < points.length; index += 1) {
+    const hold = segments[(index - 1) * 2];
+    const change = segments[(index - 1) * 2 + 1];
+    check(
+      hold?.x === points[index].x && hold?.y === points[index - 1].y,
+      `step ${index}: expected the value to hold at x ${points[index].x}, got ` +
+      `${hold ? `x ${hold.x} y ${hold.y}` : "nothing"}`,
+    );
+    check(
+      change?.x === points[index].x && change?.y === points[index].y,
+      `step ${index}: expected the value to change at x ${points[index].x}, got ` +
+      `${change ? `x ${change.x} y ${change.y}` : "nothing"}`,
+    );
+  }
+  check(stepLinePath([]) === "", "an empty step line should be an empty path");
 }
 
 // A refused event must leave the book exactly as it was. Supplied as a second
