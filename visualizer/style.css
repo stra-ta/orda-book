@@ -1,25 +1,36 @@
+/* One sans for reading, one mono for anything the engine counted. Leaf green is
+   the only accent, and it means "you chose this" or "this got filled". Ask-side
+   data is graphite, so the two sides never both look like the accent. */
 :root {
   color-scheme: light;
-  --paper: #f6f4ef;
-  --panel: #fffefa;
-  --ink: #20262d;
-  --muted: #667078;
-  --line: #dcd7ce;
-  --line-soft: #ebe7df;
-  --copper: #93643a;
-  --copper-soft: #f4ede3;
-  --buy: #4d7064;
-  --buy-soft: #eaf0ec;
-  --sell: #9c5b41;
-  --sell-soft: #f5ece7;
+  --paper: #f7f8f4;
+  --panel: #ffffff;
+  --ink: #1b211d;
+  --ink-2: #3a423c;
+  --muted: #536058;
+  --subtle: #6b726b;
+  --rule: #d9ded7;
+  --rule-soft: #e9ece6;
+  --grid: #ecefe8;
+  --leaf: #426849;
+  --leaf-deep: #315638;
+  --leaf-wash: #e9f0e8;
+  --graphite: #252c27;
+  --graphite-2: #3d453f;
+  --refused: #7c5341;
+  --refused-wash: #f6efe9;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* The chart bands are trimmed so a value at the deepest bar tip has room
+     before the queue text starts. chartBand() in app.js reads this same value,
+     so the drawn geometry and the gutter cannot drift apart. */
+  --chart-span: 86%;
+  font-family: var(--sans);
+  color: var(--ink);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--paper);
-  color: var(--ink);
 }
 
 * {
@@ -30,65 +41,82 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  /* A ruled sheet behind the panels. The panels are opaque, so the grid only
+     shows in the gutters and never runs through chart data. */
   background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 68px 68px;
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
-button:focus-visible,
-a:focus-visible,
-input:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--copper) 65%, white);
-  outline-offset: 3px;
+a {
+  color: var(--leaf-deep);
 }
+
+:focus-visible {
+  outline: 2px solid var(--leaf);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- page frame ---------- */
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   max-width: 1320px;
-  min-height: 62px;
+  min-height: 58px;
   margin: 0 auto;
-  padding: 0 34px;
-  border-bottom: 1px solid var(--line);
+  padding: 0 32px;
 }
 
 .wordmark {
   color: var(--ink);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.06em;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.04em;
   text-decoration: none;
 }
 
 .wordmark span {
-  color: var(--copper);
+  color: var(--leaf);
 }
 
 .source-link {
-  color: var(--muted);
+  color: var(--subtle);
   font-size: 12px;
-  text-decoration-color: var(--line);
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .source-link:hover {
-  color: var(--ink);
+  color: var(--leaf-deep);
 }
 
 .source-link span {
-  margin-left: 3px;
-  color: var(--copper);
+  margin-left: 4px;
+  color: var(--leaf);
 }
 
 .page-shell {
-  width: min(100% - 68px, 1252px);
+  width: min(100% - 64px, 1240px);
   margin: 0 auto;
-  padding: 42px 0 22px;
+  padding: 18px 0 40px;
 }
 
 h1,
@@ -98,53 +126,181 @@ p {
 }
 
 h1 {
-  margin-bottom: 18px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(31px, 3.5vw, 42px);
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  line-height: 1.08;
+  max-width: 20ch;
+  margin-bottom: 20px;
+  font-size: clamp(32px, 3.6vw, 47px);
+  font-weight: 780;
+  letter-spacing: -0.038em;
+  line-height: 1.03;
 }
 
-/* What the page is, before the instrument. Two columns at wide widths: a single
-   narrow column of prose leaves half the page empty and pushes the playback
-   controls below the fold. */
-.page-intro {
-  margin-bottom: 24px;
+.inline-link {
+  color: var(--leaf-deep);
+  text-decoration-color: var(--leaf);
+  text-underline-offset: 3px;
 }
 
+/* Two columns at wide widths: one narrow column of prose leaves half the page
+   empty and pushes the transport below the fold. */
 .intro-copy {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 0 34px;
+  gap: 0 36px;
+  max-width: 1120px;
 }
 
 .intro-copy p {
   margin-bottom: 0;
-  color: #505960;
+  color: var(--muted);
   font-size: 13.5px;
-  line-height: 1.6;
+  line-height: 1.62;
 }
+
+/* ---------- transport ---------- */
+
+/* One card, one row. The status and the hint sit at the far end of the same
+   line as the controls and wrap below them only when the row runs out of room,
+   which is what keeps the card a single object instead of a bar with a caption
+   under it. */
+.transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 26px;
+  padding: 12px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.transport-buttons {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.control-button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
+}
+
+.control-button:hover:not(:disabled) {
+  border-color: var(--leaf);
+  background: var(--leaf-wash);
+  color: var(--leaf-deep);
+}
+
+.control-button:disabled {
+  color: var(--subtle);
+  cursor: not-allowed;
+}
+
+.play-button {
+  min-width: 62px;
+  border-color: var(--leaf);
+  background: var(--leaf);
+  color: #fff;
+}
+
+.play-button:hover:not(:disabled) {
+  border-color: var(--leaf-deep);
+  background: var(--leaf-deep);
+  color: #fff;
+}
+
+.progress-control {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 1fr);
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 320px;
+  max-width: 460px;
+}
+
+.progress-label,
+.event-count {
+  color: var(--subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.event-count {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--leaf);
+  cursor: pointer;
+}
+
+/* The counter sits immediately after the slider, so the pair reads as one
+   control rather than as two ends of a stretched bar. */
+.step-counter {
+  margin: 0 0 0 auto;
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.step-number {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Takes the whole remainder of the row when it fits beside the controls, and
+   wraps to a full line of its own when it does not. `flex: 1 1 100%` at the
+   narrow breakpoint is what sends it down. */
+.transport-foot {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 16px;
+  color: var(--subtle);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.keyboard-hint {
+  white-space: nowrap;
+}
+
+/* ---------- workbench ---------- */
 
 .workbench {
   display: grid;
-  grid-template-areas: "timeline book detail";
-  grid-template-columns: minmax(210px, 0.72fr) minmax(420px, 1.55fr) minmax(255px, 0.88fr);
-  align-items: stretch;
-  gap: 13px;
+  grid-template-columns: minmax(248px, 292px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.rail {
+  display: grid;
+  gap: 16px;
 }
 
 .panel {
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
   background: var(--panel);
-}
-
-.event-panel {
-  grid-area: timeline;
-  padding: 17px 15px 13px;
 }
 
 .panel-heading {
@@ -152,123 +308,246 @@ h1 {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  min-height: 19px;
+  min-height: 14px;
 }
 
-h2 {
-  margin-bottom: 0;
-  font-size: 15px;
-  font-weight: 630;
-  letter-spacing: -0.025em;
-}
-
-.event-count,
-.step-number {
-  color: var(--muted);
-  font-family: var(--mono);
+/* One label style for the whole page, used three or four times per screen at
+   most. Nothing else is uppercase. */
+.panel-label {
+  margin: 0;
+  color: var(--subtle);
   font-size: 10px;
-  white-space: nowrap;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
-.panel-note {
-  margin: 14px 0 14px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.45;
-}
+/* ---------- event tape ---------- */
 
 .event-list {
   display: grid;
-  gap: 4px;
-  margin: 0;
+  gap: 2px;
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .event-choice {
   display: grid;
-  grid-template-columns: 23px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   align-items: baseline;
+  gap: 9px;
   width: 100%;
-  min-height: 35px;
-  padding: 8px 8px 8px 9px;
+  min-height: 33px;
+  padding: 7px 9px 7px 8px;
   border: 0;
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
   background: transparent;
-  color: #49525a;
+  color: var(--muted);
   cursor: pointer;
   text-align: left;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
 }
 
 .event-choice:hover {
-  background: #f5f2ec;
+  background: var(--paper);
   color: var(--ink);
 }
 
 .event-choice[aria-current="step"] {
-  border-left-color: var(--copper);
-  background: var(--copper-soft);
+  border-left-color: var(--leaf);
+  background: var(--leaf-wash);
   color: var(--ink);
 }
 
 .event-index {
-  color: #666d71;
+  color: var(--subtle);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
 
 .event-choice[aria-current="step"] .event-index {
-  color: #7b5229;
+  color: var(--leaf-deep);
 }
 
 .event-label {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* A refusal is stated, not just tinted, so it survives without colour. */
+.event-flag {
+  padding: 2px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  color: var(--refused);
+  background: var(--refused-wash);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- selected event ---------- */
+
+/* Fixed, not a floor. The summary runs to three lines and the prediction to
+   four, and the measured worst case across the default, modify and rejection
+   traces at the rail's narrowest width is 221px of content. A panel that grows
+   when the prediction appears pushes the fills panel down, so the box is sized
+   once and the content sits at the top. */
+.selected-panel {
+  height: 253px;
+}
+
+.event-summary {
+  margin: 13px 0 8px;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  line-height: 1.34;
+}
+
+.animate-step .event-summary {
+  animation: event-arrive 200ms ease-out both;
+}
+
+.event-explanation {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.58;
+}
+
+/* The question to answer before pressing Next. It only appears when the next
+   event fills against more than one resting order, so it is never asked when
+   there is no queue decision to make.
+   Hidden with visibility rather than display, so the panel it lives in keeps
+   one height and the rail never shifts as the reader steps. */
+.prediction {
+  display: grid;
+  gap: 5px;
+  visibility: hidden;
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  border-left: 3px solid var(--leaf);
+  border-radius: 0 4px 4px 0;
+  background: var(--leaf-wash);
+  color: var(--leaf-deep);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.prediction.is-asked {
+  visibility: visible;
+}
+
+.prediction-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---------- fills ---------- */
+
+/* Fixed, not a floor: the worst case in any reachable scenario is two receipts,
+   and a box that grows when a fill lands is a box the reader watches move. */
+.trades-panel {
+  height: 148px;
+}
+
+.empty-trades {
+  margin: 13px 0 0;
+  color: var(--subtle);
+  font-size: 12.5px;
+}
+
+.trade-list {
+  display: grid;
+  gap: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trade-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 38px;
+  padding: 6px 0 6px 9px;
+  border-top: 1px solid var(--rule-soft);
+  border-left: 3px solid var(--leaf);
+}
+
+.trade-list.is-animating .trade-item {
+  animation: trade-in 240ms ease-out both;
+}
+
+.trade-index {
+  color: var(--leaf);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.trade-counterparty {
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.trade-values {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- order book ---------- */
+
 .book-panel {
-  grid-area: book;
-  padding: 17px 18px 0;
+  padding: 16px 0 0;
 }
 
 .book-heading {
   align-items: center;
-  margin-bottom: 4px;
+  padding: 0 16px;
 }
 
 .best-prices {
   margin: 0;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-/* Five columns: the FIFO order text sits in the outer columns and the chart
-   owns the inner bands, so a value printed at a bar tip can never land on an
-   order id. The price column between them is the chart's shared axis. */
+/* Five columns: the queue tickets sit in the outer columns and the chart owns
+   the inner bands, so a value printed at a bar tip can never land on an order
+   id. The price column between them is the chart's shared axis, drawn as a
+   continuous band the bars grow out of. */
 .book-columns,
 .book-row,
 .depth-axis {
   display: grid;
   grid-template-columns:
-    minmax(0, 1fr) minmax(0, 1.2fr) 56px minmax(0, 1.2fr) minmax(0, 1fr);
-  align-items: center;
-  column-gap: 8px;
+    minmax(0, 1fr) minmax(0, 1.2fr) 66px minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .book-columns {
-  margin-top: 15px;
-  padding: 0 8px 8px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 9px;
-  letter-spacing: 0.035em;
+  align-items: center;
+  margin-top: 16px;
+  padding: 0 16px 9px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--subtle);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .book-columns > :first-child {
@@ -292,25 +571,13 @@ h2 {
 }
 
 .book-row {
-  min-height: 67px;
-  padding: 8px;
-  border-bottom: 1px solid var(--line-soft);
+  min-height: 66px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--rule-soft);
 }
 
 .book-row:last-child {
   border-bottom: 0;
-}
-
-.animate-step .book-row.is-touched .price-cell {
-  animation: price-touch 650ms ease-out 120ms both;
-}
-
-/* The chart bands are their own grid columns. --chart-span trims them so a
-   value printed at the deepest bar tip has room before the order text starts.
-   Every rule that positions by depth reads this one variable, including
-   chartBand() in app.js, so they cannot drift apart. */
-:root {
-  --chart-span: 86%;
 }
 
 .ladder-wrap {
@@ -326,39 +593,39 @@ h2 {
 }
 
 .depth-area-buy {
-  fill: var(--buy-soft);
+  fill: var(--leaf-wash);
 }
 
 .depth-area-ask {
-  fill: var(--sell-soft);
+  fill: #eef0ed;
 }
 
 .depth-edge {
   fill: none;
-  stroke-width: 1;
+  stroke-width: 1.25;
 }
 
 .depth-edge-buy {
-  stroke: var(--buy);
+  stroke: var(--leaf);
 }
 
 .depth-edge-ask {
-  stroke: var(--sell);
+  stroke: var(--graphite-2);
 }
 
 .depth-max-line {
-  stroke: var(--line);
+  stroke: var(--rule-soft);
   stroke-width: 1;
   shape-rendering: crispEdges;
 }
 
-/* The value at each bar tip. Muted and heavier than the order text on
-   purpose: at full depth the tip sits a few pixels from an order id, and at the
-   same size and colour in the same font the two read as one token. */
+/* The value at each bar tip. Muted and heavier than the queue text on purpose:
+   at full depth the tip sits a few pixels from an order id, and at the same
+   size and colour in the same font the two read as one token. */
 .depth-tip {
   fill: var(--muted);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
@@ -369,7 +636,38 @@ h2 {
 }
 
 .depth-ghost.is-visible {
-  opacity: 0.55;
+  opacity: 0.5;
+}
+
+/* The new edge grows out from the price axis. app.js measures the path, sets
+   the dash lengths, and releases the offset on the next frame. */
+.depth-edge.is-drawing,
+.history-line.is-drawing {
+  transition: stroke-dashoffset 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Where depth left the book, and at which price. The stroke covers exactly the
+   span the previous profile had and the new one does not, so it is read as
+   size that was taken rather than as decoration on the row. */
+.sweep-line {
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.sweep-line-buy {
+  stroke: var(--leaf);
+}
+
+.sweep-line-ask {
+  stroke: var(--graphite-2);
+}
+
+.depth-sweep .sweep-line {
+  animation: sweep-draw 620ms ease-out both;
+}
+
+.history-dot.is-arriving {
+  animation: dot-arrive 260ms ease-out both;
 }
 
 .side-cell {
@@ -378,14 +676,15 @@ h2 {
   display: grid;
   align-content: center;
   gap: 5px;
+  padding: 8px 12px;
 }
 
 .side-cell.buy-side {
   text-align: right;
 }
 
-/* The drawn value, kept in the accessibility tree and in the DOM for the
-   chart test, since the visible label lives inside the SVG. */
+/* The drawn value, kept in the accessibility tree and in the DOM for the chart
+   test, since the visible label lives inside the SVG. */
 .depth-value {
   position: absolute;
   width: 1px;
@@ -395,24 +694,51 @@ h2 {
   white-space: nowrap;
 }
 
-.buy-side .order-lines {
-  color: var(--buy);
+.ticket-list {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
 }
 
-.sell-side .order-lines {
-  color: var(--sell);
+.buy-side .ticket-list {
+  justify-items: end;
 }
 
-/* A price level with a queue in it wraps rather than truncating, because the
-   queue order is the lesson and "the second order" is the part that would be
-   cut. */
-.order-lines {
-  min-height: 11px;
+/* One resting order. The position number is the queue the page is about, so it
+   is stated in text rather than implied by colour. */
+.ticket {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-height: 16px;
+  color: var(--ink);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
+}
+
+.ticket-position {
+  min-width: 9px;
+  color: var(--subtle);
+  font-size: 10px;
+  text-align: center;
+}
+
+.buy-side .ticket-orders {
+  color: var(--leaf);
+}
+
+.sell-side .ticket-orders {
+  color: var(--graphite-2);
+}
+
+/* The size this order just gave up. The slot is always present so nothing in
+   the row moves sideways when a fill arrives. */
+.ticket-delta {
+  min-width: 20px;
+  color: var(--leaf);
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .chart-cell {
@@ -421,28 +747,34 @@ h2 {
 }
 
 .price-cell {
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  border-inline: 1px solid var(--rule-soft);
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 650;
   text-align: center;
 }
 
+.animate-step .book-row.is-touched .price-cell {
+  animation: price-touch 700ms ease-out 120ms both;
+}
+
 .depth-axis {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr);
-  column-gap: 8px;
-  padding: 4px 8px 0;
+  align-items: center;
+  padding: 6px 16px 0;
 }
 
 /* The scale is the replay's deepest depth, parked where a maximum bar ends.
    --chart-span keeps it there when the bands are trimmed. */
 .axis-scale {
-  width: var(--chart-span, 86%);
-  color: var(--muted);
+  width: var(--chart-span);
+  color: var(--subtle);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -458,96 +790,99 @@ h2 {
   text-align: right;
 }
 
-.axis-caption {
-  margin: 7px 0 0;
-  color: var(--muted);
-  font-size: 9px;
-  line-height: 1.4;
-  text-align: center;
-}
-
-.matching-rule {
-  display: flex;
-  align-items: baseline;
-  gap: 11px;
-  margin: 11px -18px 0;
-  padding: 12px 18px 14px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.rule-label {
-  flex: 0 0 auto;
-  margin: 0;
-  color: var(--copper);
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-}
-
-.matching-rule p {
-  margin: 0;
-  color: #505960;
-  font-size: 10px;
+.axis-caption,
+.history-caption {
+  margin: 8px 0 0;
+  padding: 0 16px;
+  color: var(--subtle);
+  font-size: 11px;
   line-height: 1.45;
 }
 
+/* The − note explains a mark only some steps carry. It is revealed rather than
+   shown, because below 660px it wraps to a second line, and a caption that
+   grows by a line when a fill lands moves everything under it. */
+.caption-note {
+  visibility: hidden;
+}
+
+.caption-note.is-shown {
+  visibility: visible;
+}
+
 .depth-history {
-  margin: 14px 0 0;
+  margin: 18px 0 0;
 }
 
 .history-chart {
   display: block;
-  width: 100%;
-  height: 64px;
+  width: calc(100% - 32px);
+  height: 70px;
+  margin: 0 16px;
   overflow: visible;
 }
 
 .history-line {
   fill: none;
-  stroke-width: 1.25;
+  stroke-width: 1.5;
   stroke-linejoin: round;
 }
 
 .history-line-bid {
-  stroke: var(--buy);
+  stroke: var(--leaf);
 }
 
 .history-line-ask {
-  stroke: var(--sell);
+  stroke: var(--graphite-2);
 }
 
 .history-dot {
-  stroke-width: 1;
+  stroke-width: 1.25;
 }
 
 .history-dot-bid {
   fill: var(--panel);
-  stroke: var(--buy);
+  stroke: var(--leaf);
 }
 
 .history-dot-ask {
   fill: var(--panel);
-  stroke: var(--sell);
+  stroke: var(--graphite-2);
 }
 
 .history-cursor {
-  stroke: var(--copper);
+  stroke: var(--ink);
   stroke-width: 1;
   shape-rendering: crispEdges;
 }
 
-.history-caption {
-  margin: 7px 0 0;
-  color: var(--muted);
-  font-size: 9px;
-  line-height: 1.4;
+.matching-rule {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 18px -1px 0;
+  padding: 14px 17px 16px;
+  border-radius: 0 0 5px 5px;
+  background: var(--graphite);
 }
 
-.parameter-panel {
-  margin-top: 18px;
-  padding-top: 15px;
-  border-top: 1px solid var(--line-soft);
+.rule-label {
+  flex: 0 0 auto;
+  color: #8fbf9d;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
+
+.matching-rule p {
+  margin: 0;
+  color: #dfe4de;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* ---------- parameters (loopback dev server only) ---------- */
 
 .parameter-panel[hidden] {
   display: none;
@@ -556,262 +891,69 @@ h2 {
 .parameter-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px 10px;
-  margin-top: 13px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .parameter-grid label,
 .parameter-toggle {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.3;
 }
 
 .parameter-grid input,
 .parameter-grid select {
   width: 100%;
-  min-height: 27px;
-  padding: 0 6px;
-  border: 1px solid var(--line);
-  border-radius: 2px;
+  min-height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
   background: var(--panel);
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .parameter-grid input:disabled {
-  color: #82878a;
-  background: #f4f2ed;
+  background: var(--paper);
+  color: var(--subtle);
 }
 
 .parameter-toggle {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
-  margin-top: 11px;
-  font-size: 10px;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
 }
 
 .parameter-toggle input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--copper);
+  width: 15px;
+  height: 15px;
+  accent-color: var(--leaf);
 }
 
 .parameter-note {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: 9px;
-  line-height: 1.45;
-}
-
-.event-choice.is-rejected .event-label {
-  color: var(--sell);
-}
-
-.event-choice.is-rejected .event-index {
-  color: #8a3f28;
-}
-
-.detail-column {
-  grid-area: detail;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 13px;
-}
-
-.selected-panel,
-.trades-panel {
-  padding: 17px 16px;
-}
-
-.selected-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 196px;
-}
-
-.step-number {
-  align-self: flex-start;
-  padding-top: 2px;
-}
-
-.event-summary {
-  margin: 19px 0 8px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 18px;
-  letter-spacing: -0.025em;
-  line-height: 1.3;
-}
-
-.animate-step .event-summary {
-  animation: event-arrive 180ms ease-out both;
-}
-
-.event-explanation {
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.55;
-}
-
-/* The question to answer before pressing Next. It only appears when the next
-   event fills against more than one resting order, so it is never asked when
-   there is no queue decision to make. */
-.prediction {
-  margin: 14px 0 0;
-  padding: 9px 11px;
-  border-left: 2px solid var(--copper);
-  background: var(--copper-soft);
+  margin: 11px 0 0;
+  color: var(--subtle);
   font-size: 11px;
   line-height: 1.5;
 }
 
-.prediction[hidden] {
-  display: none;
-}
-
-.trades-panel {
-  min-height: 180px;
-}
-
-.empty-trades {
-  margin: 19px 0 0;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.trade-list {
-  display: grid;
-  gap: 0;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.trade-item {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.trade-list.is-animating .trade-item {
-  animation: trade-in 220ms ease-out both;
-}
-
-.trade-index {
-  color: var(--copper);
-  font-family: var(--mono);
-  font-size: 9px;
-}
-
-.trade-counterparty {
-  color: var(--ink);
-  font-size: 10px;
-}
-
-.trade-values {
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.playback {
-  display: grid;
-  grid-template-columns: auto minmax(180px, 1fr) auto;
-  align-items: center;
-  gap: 23px;
-  margin-top: 15px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
-.playback-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.control-button {
-  min-height: 34px;
-  padding: 0 11px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--panel);
-  color: #424a50;
-  cursor: pointer;
-  font-size: 11px;
-  transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
-}
-
-.control-button:hover:not(:disabled) {
-  border-color: #afa79a;
-  background: #f4f1eb;
-  color: var(--ink);
-}
-
-.control-button:disabled {
-  color: #82878a;
-  cursor: not-allowed;
-}
-
-.play-button {
-  min-width: 58px;
-  border-color: var(--copper);
-  background: var(--copper);
-  color: white;
-}
-
-.play-button:hover:not(:disabled) {
-  border-color: #754a28;
-  background: #754a28;
-  color: white;
-}
-
-.progress-control {
-  display: grid;
-  grid-template-columns: auto minmax(90px, 1fr);
-  align-items: center;
-  gap: 12px;
-}
-
-.progress-label {
-  color: var(--muted);
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-input[type="range"] {
-  width: 100%;
-  height: 20px;
-  margin: 0;
-  accent-color: var(--copper);
-  cursor: pointer;
-}
-
-.keyboard-hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: 10px;
-  text-align: right;
-  white-space: nowrap;
-}
+/* ---------- error ---------- */
 
 .load-error {
-  margin: 18px 0;
-  padding: 12px 14px;
-  border-left: 3px solid var(--sell);
-  background: var(--sell-soft);
-  color: #553629;
-  font-size: 12px;
+  margin: 20px 0 0;
+  padding: 13px 15px;
+  border: 1px solid var(--refused);
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: var(--refused-wash);
+  color: #4d3327;
+  font-size: 12.5px;
 }
 
 @keyframes event-arrive {
@@ -820,9 +962,9 @@ input[type="range"] {
 }
 
 @keyframes price-touch {
-  0% { background-color: transparent; }
-  28% { background-color: var(--copper-soft); }
-  100% { background-color: transparent; }
+  0% { background-color: var(--panel); }
+  26% { background-color: var(--leaf-wash); }
+  100% { background-color: var(--panel); }
 }
 
 @keyframes trade-in {
@@ -830,142 +972,231 @@ input[type="range"] {
   to { opacity: 1; }
 }
 
-@media (max-width: 1020px) {
-  .page-shell {
-    width: min(100% - 48px, 850px);
-    padding-top: 34px;
-  }
+/* Draws the swept span in from the old tip and fades it out, so the reader sees
+   the size leave the book before it is gone. */
+@keyframes sweep-draw {
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
-  .topbar {
-    padding-right: 24px;
-    padding-left: 24px;
+@keyframes dot-arrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 1080px) {
+  .page-shell {
+    width: min(100% - 48px, 1000px);
   }
 
   .workbench {
-    grid-template-areas:
-      "timeline book"
-      "detail detail";
-    grid-template-columns: minmax(205px, 0.66fr) minmax(0, 1.5fr);
-  }
-
-  .detail-column {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto;
-  }
-
-  .selected-panel,
-  .trades-panel {
-    min-height: 175px;
+    grid-template-columns: minmax(230px, 258px) minmax(0, 1fr);
+    gap: 14px;
   }
 }
 
-@media (max-width: 660px) {
-  .topbar {
-    min-height: 54px;
-    padding: 0 18px;
-  }
-
-  .page-shell {
-    width: calc(100% - 36px);
-    padding-top: 27px;
-  }
-
-  .page-intro {
-    display: block;
-    margin-bottom: 19px;
-  }
-
-  h1 {
-    max-width: 460px;
-    font-size: 34px;
-  }
-
+/* Below this the ladder's five columns stop being legible, so the rail
+   dissolves and the page becomes one column: pick an event, read the book,
+   then read what it did. */
+@media (max-width: 900px) {
   .workbench {
-    grid-template-areas:
-      "timeline"
-      "detail"
-      "book";
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    grid-template-areas: "tape" "book" "selected" "trades" "params";
+    gap: 14px;
+    margin-top: 16px;
   }
 
-  .event-panel {
-    padding: 14px 13px 12px;
+  .rail {
+    display: contents;
   }
+
+  .event-panel { grid-area: tape; }
+  .book-panel { grid-area: book; }
+  .selected-panel { grid-area: selected; }
+  .trades-panel { grid-area: trades; }
+  .parameter-panel { grid-area: params; }
 
   .event-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .book-panel {
-    padding: 14px 13px 0;
+  .intro-copy {
+    max-width: none;
+  }
+}
+
+@media (max-width: 660px) {
+  .topbar {
+    min-height: 52px;
+    padding: 0 16px;
+  }
+
+  .page-shell {
+    width: calc(100% - 32px);
+    padding-top: 20px;
+  }
+
+  h1 {
+    max-width: none;
+    font-size: 33px;
   }
 
   .intro-copy {
     grid-template-columns: minmax(0, 1fr);
-    gap: 8px 0;
+    gap: 10px 0;
   }
 
-  /* Narrow columns leave the deepest tip label only a few pixels from the order
-     text, so trim the bands further to buy the gutter back. */
-  :root {
-    --chart-span: 78%;
+  .transport {
+    gap: 9px 14px;
+    margin-top: 22px;
+    padding: 12px 13px;
+  }
+
+  .progress-control {
+    flex: 1 1 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .step-counter {
+    margin-left: auto;
+  }
+
+  .transport-buttons .control-button {
+    flex: 1;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .book-panel {
+    padding: 14px 0 0;
   }
 
   .book-heading {
-    flex-direction: column;
     align-items: flex-start;
+    flex-direction: column;
     gap: 5px;
+    padding: 0 14px;
   }
 
   .best-prices {
     text-align: left;
   }
 
-  .matching-rule {
-    margin-right: -13px;
-    margin-left: -13px;
-    padding-right: 13px;
-    padding-left: 13px;
+  /* The five columns get their share from a phone width, not a laptop one. The
+     queue text wins the extra room, because the queue is the lesson and the bar
+     is only a shape for the number printed at its tip. */
+  .book-columns,
+  .book-row,
+  .depth-axis {
+    grid-template-columns:
+      minmax(0, 1.4fr) minmax(0, 0.85fr) 44px minmax(0, 0.85fr) minmax(0, 1.4fr);
   }
 
-  .detail-column {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+  .book-columns,
+  .book-row,
+  .depth-axis,
+  .axis-caption,
+  .history-caption {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 
-  .selected-panel,
-  .trades-panel {
-    min-height: auto;
-    padding: 14px 13px;
+  .book-columns {
+    font-size: 8.5px;
+    letter-spacing: 0.05em;
+  }
+
+  .book-row {
+    min-height: 60px;
+  }
+
+  .side-cell {
+    padding: 8px 5px;
+  }
+
+  .ticket {
+    gap: 5px;
+    font-size: 10.5px;
+  }
+
+  .ticket-position {
+    min-width: 8px;
+    font-size: 9.5px;
+  }
+
+  .ticket-delta {
+    min-width: 16px;
+    font-size: 10.5px;
+  }
+
+  /* An order id and its size must never break apart, even if the row gets
+     tighter than the design widths. */
+  .ticket-orders,
+  .ticket-position,
+  .ticket-delta {
+    white-space: nowrap;
+  }
+
+  /* Not enough room for the status and the hint beside the controls, so they
+     take the line under the slider, sharing it with the counter. The keyboard
+     hint goes entirely: there are no arrow keys at this width. */
+  .keyboard-hint {
+    display: none;
+  }
+
+  .transport-foot {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+  }
+
+  /* Narrow columns leave the deepest tip label only a few pixels from the queue
+     text, so trim the bands further to buy the gutter back. */
+  :root {
+    --chart-span: 78%;
+  }
+
+  .history-chart {
+    width: calc(100% - 28px);
+    margin: 0 14px;
   }
 
   .event-summary {
-    margin-top: 15px;
-  }
-
-  .playback {
-    grid-template-columns: 1fr auto;
-    gap: 11px 14px;
     margin-top: 12px;
   }
 
-  .playback-buttons {
-    grid-column: 1 / -1;
+  /* Two event columns on a phone only fit if the row gives up some of its
+     chrome. A truncated price would be worse than a shorter label. */
+  .event-choice {
+    grid-template-columns: 17px minmax(0, 1fr) auto;
+    gap: 7px;
   }
 
-  .playback-buttons .control-button {
-    flex: 1;
+  .event-label {
+    font-size: 12px;
   }
 
-  .progress-control {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 3px;
+  .trades-panel {
+    min-height: auto;
+  }
+}
+
+/* 320px is the floor. The queue still reads top to bottom and the column header
+   still says oldest first, so the position number is the first thing to go
+   rather than the order id or its size. */
+@media (max-width: 360px) {
+  .book-columns,
+  .book-row,
+  .depth-axis {
+    grid-template-columns:
+      minmax(0, 1.55fr) minmax(0, 0.7fr) 40px minmax(0, 0.7fr) minmax(0, 1.55fr);
   }
 
-  .keyboard-hint {
-    align-self: end;
-    padding-bottom: 4px;
+  .ticket-position {
+    display: none;
   }
 }
 
@@ -978,5 +1209,6 @@ input[type="range"] {
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }

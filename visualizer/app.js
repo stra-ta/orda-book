@@ -6,6 +6,7 @@ const selectedTitle = document.querySelector("#selected-title");
 const eventSummary = document.querySelector("#event-summary");
 const eventExplanation = document.querySelector("#event-explanation");
 const prediction = document.querySelector("#prediction");
+const predictionText = document.querySelector("#prediction-text");
 const stepNumber = document.querySelector("#step-number");
 const bestPrices = document.querySelector("#best-prices");
 const ladderWrap = document.querySelector("#ladder-wrap");
@@ -14,6 +15,7 @@ const depthChart = document.querySelector("#depth-chart");
 const depthHistoryChart = document.querySelector("#depth-history-chart");
 const bidAxis = document.querySelector("#bid-axis");
 const askAxis = document.querySelector("#ask-axis");
+const deltaNote = document.querySelector("#delta-note");
 const tradeList = document.querySelector("#trade-list");
 const emptyTrades = document.querySelector("#empty-trades");
 const previousButton = document.querySelector("#previous-button");
@@ -46,7 +48,6 @@ let history = { bid: [], ask: [] };
 let liveMode = false;
 let requestSerial = 0;
 let parameterTimer = null;
-let ghostTimer = null;
 
 function validateTrace(trace) {
   if (trace?.schema !== "orda-book/replay-trace/v1" || !Array.isArray(trace.frames)) {
@@ -231,7 +232,31 @@ function describeEvent(frame) {
   return [summary, "The order crossed the best available price. At one price, arrival order decides who fills first."];
 }
 
-function renderSideCell(group, cumulative, side) {
+// One resting order, as a ticket. The trace lists each side in queue order, so
+// the position number is the FIFO position the whole page is about. It is
+// written out rather than implied by colour, and a ticket that just gave up
+// size says so in the same row.
+function renderTicket(order, position, filled) {
+  const ticket = node("span", "ticket");
+  ticket.dataset.orderId = order.orderId;
+  ticket.append(
+    node("span", "ticket-position", String(position)),
+    node("span", "ticket-orders", `#${order.orderId} · ${order.quantity}`),
+  );
+  if (filled > 0n) {
+    const unit = filled === 1n ? "unit" : "units";
+    const delta = node("span", "ticket-delta", `−${filled}`);
+    delta.setAttribute("aria-hidden", "true");
+    ticket.append(node("span", "visually-hidden", `${filled} ${unit} filled on this step`), delta);
+  } else {
+    // The slot is always present, empty or not, so a row never shifts sideways
+    // when a fill arrives.
+    ticket.append(node("span", "ticket-delta"));
+  }
+  return ticket;
+}
+
+function renderSideCell(group, cumulative, side, filledById) {
   const cell = node("div", `side-cell ${side}-side`);
   cell.setAttribute("role", "cell");
   if (cumulative !== null) {
@@ -243,9 +268,13 @@ function renderSideCell(group, cumulative, side) {
     label.dataset.max = maximumCumulativeDepth.toString();
     cell.append(label);
   }
-  cell.append(node("span", "order-lines", group
-    ? group.orders.map((order) => `#${order.orderId} · ${order.quantity}`).join("   ")
-    : ""));
+  const list = node("span", "ticket-list");
+  if (group) {
+    for (const [position, order] of group.orders.entries()) {
+      list.append(renderTicket(order, position + 1, filledById.get(order.orderId) ?? 0n));
+    }
+  }
+  cell.append(list);
   return cell;
 }
 
@@ -304,17 +333,73 @@ function profileOutline(profile, rowHeight, xOf, axisX) {
   };
 }
 
-function drawProfileSide(group, profile, side, geometry, withLabels) {
+const EDGE_DRAW_MS = 380;
+const SWEEP_MS = 620;
+let motionTimers = [];
+
+// Motion is decoration on top of a redraw, so it is skipped when the reader has
+// asked for less of it. The stylesheet's reduced-motion block stays as the
+// backstop for the animations that are already unconditional.
+function motionAllowed() {
+  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function afterMotion(delay, action) {
+  motionTimers.push(window.setTimeout(action, delay));
+  return action;
+}
+
+function clearMotionTimers() {
+  for (const timer of motionTimers) window.clearTimeout(timer);
+  motionTimers = [];
+}
+
+function depthScale(axisX, span, bid) {
+  return (value) => axisX +
+    (bid ? -1 : 1) * (Number((value * 1000n) / maximumCumulativeDepth) / 1000) * span;
+}
+
+// The edge draws itself outward from the price axis rather than appearing. A
+// step-line has no natural tween, and dash offset is the one property that can
+// be animated on an SVG path without measuring the path first.
+function drawEdgeIn(path) {
+  if (!motionAllowed()) return;
+  let length = 0;
+  try {
+    length = path.getTotalLength();
+  } catch {
+    return;
+  }
+  if (!Number.isFinite(length) || length === 0) return;
+  path.style.strokeDasharray = String(length);
+  path.style.strokeDashoffset = String(length);
+  path.classList.add("is-drawing");
+  // The offset is released on the next frame so the transition has a start
+  // value to move from.
+  requestAnimationFrame(() => {
+    if (path.isConnected) path.style.strokeDashoffset = "0";
+  });
+  afterMotion(EDGE_DRAW_MS, () => {
+    path.classList.remove("is-drawing");
+    path.style.removeProperty("stroke-dasharray");
+    path.style.removeProperty("stroke-dashoffset");
+  });
+}
+
+function drawProfileSide(group, profile, side, geometry, withLabels, reveal = false) {
   const bid = side === "buy";
   const axisX = bid ? geometry.priceLeft : geometry.priceRight;
   const span = bid ? geometry.bidSpan : geometry.askSpan;
-  const xOf = (value) => axisX +
-    (bid ? -1 : 1) * (Number((value * 1000n) / maximumCumulativeDepth) / 1000) * span;
+  const xOf = depthScale(axisX, span, bid);
   const outline = profileOutline(profile, geometry.rowHeight, xOf, axisX);
   if (!outline) return;
 
   group.append(svgPath(`depth-area depth-area-${side}`, outline.area));
-  group.append(svgPath(`depth-edge depth-edge-${side}`, outline.edge));
+  const edge = svgPath(`depth-edge depth-edge-${side}`, outline.edge);
+  group.append(edge);
+  // Only on a step. A resize redraws the same profile, and replaying the draw
+  // on every resize frame would make the edges flicker under a dragging window.
+  if (reveal) drawEdgeIn(edge);
   if (!withLabels) return;
 
   for (const tip of outline.tips) {
@@ -327,7 +412,7 @@ function drawProfileSide(group, profile, side, geometry, withLabels) {
   }
 }
 
-function renderDepthChart(previousFrame, animate) {
+function renderDepthChart(previousFrame, animate, reveal = false) {
   const frame = frames[currentStep];
   const geometry = chartGeometry();
   depthChart.replaceChildren();
@@ -348,15 +433,53 @@ function renderDepthChart(previousFrame, animate) {
 
   const bidProfile = depthProfile(frame.bids, true, priceLevels);
   const askProfile = depthProfile(frame.asks, false, priceLevels);
-  drawProfileSide(current, bidProfile, "buy", geometry, true);
-  drawProfileSide(current, askProfile, "ask", geometry, true);
+  drawProfileSide(current, bidProfile, "buy", geometry, true, reveal);
+  drawProfileSide(current, askProfile, "ask", geometry, true, reveal);
   depthChart.append(current);
 
   if (!animate || !previousFrame) return;
+
+  // Both the sweep and the ghost describe the change rather than the new state,
+  // and a shape that appears and vanishes without a fade is a flash. Under
+  // reduced motion the reader gets the new profile and the − marks instead.
+  if (!motionAllowed()) return;
+
   const previousBid = depthProfile(previousFrame.bids, true, priceLevels);
   const previousAsk = depthProfile(previousFrame.asks, false, priceLevels);
   const hasPrevious = previousBid.some((value) => value !== null) || previousAsk.some((value) => value !== null);
   if (!hasPrevious) return;
+
+  // Where each side lost depth, draw a short leaf stroke along the row it left
+  // from. The new edge already shows the new size; this shows the size that
+  // went, and at which price, which is the part the ghost cannot say.
+  const sweeps = svgNode("g", "depth-sweep");
+  let swept = 0;
+  for (const [side, previous, current] of [
+    ["buy", previousBid, bidProfile],
+    ["ask", previousAsk, askProfile],
+  ]) {
+    const bid = side === "buy";
+    const axisX = bid ? geometry.priceLeft : geometry.priceRight;
+    const span = bid ? geometry.bidSpan : geometry.askSpan;
+    const xOf = depthScale(axisX, span, bid);
+    for (const [index, before] of previous.entries()) {
+      const after = current[index];
+      if (before === null || after === null || after >= before) continue;
+      const y = index * geometry.rowHeight + geometry.rowHeight / 2;
+      const line = svgNode("line", `sweep-line sweep-line-${side}`);
+      line.setAttribute("x1", xOf(before).toFixed(2));
+      line.setAttribute("x2", xOf(after).toFixed(2));
+      line.setAttribute("y1", y.toFixed(2));
+      line.setAttribute("y2", y.toFixed(2));
+      line.style.animationDelay = `${swept * 90}ms`;
+      sweeps.append(line);
+      swept += 1;
+    }
+  }
+  if (swept > 0) {
+    depthChart.append(sweeps);
+    afterMotion(SWEEP_MS, () => sweeps.remove());
+  }
 
   // The old profile fades out beside the new one. Path data cannot be
   // transitioned when a side's row range changes, and seeing both shapes at
@@ -365,11 +488,10 @@ function renderDepthChart(previousFrame, animate) {
   drawProfileSide(ghost, previousBid, "buy", geometry, false);
   drawProfileSide(ghost, previousAsk, "ask", geometry, false);
   depthChart.append(ghost);
-  window.clearTimeout(ghostTimer);
-  ghostTimer = window.setTimeout(() => ghost.remove(), 620);
+  afterMotion(SWEEP_MS, () => ghost.remove());
 }
 
-function renderHistory() {
+function renderHistory(reveal = false) {
   depthHistoryChart.replaceChildren();
   const width = depthHistoryChart.getBoundingClientRect().width || ladderWrap.getBoundingClientRect().width;
   const height = 64;
@@ -395,12 +517,17 @@ function renderHistory() {
         path += ` L ${xOf(index).toFixed(2)} ${yOf(values[index + 1]).toFixed(2)}`;
         path += ` L ${xOf(index + 1).toFixed(2)} ${yOf(values[index + 1]).toFixed(2)}`;
       }
-      depthHistoryChart.append(svgPath(`history-line history-line-${side}`, path));
+      const line = svgPath(`history-line history-line-${side}`, path);
+      depthHistoryChart.append(line);
+      if (reveal) drawEdgeIn(line);
       for (let index = 0; index < shown; index += 1) {
         const dot = svgNode("circle", `history-dot history-dot-${side}`);
         dot.setAttribute("cx", xOf(index).toFixed(2));
         dot.setAttribute("cy", yOf(values[index]).toFixed(2));
         dot.setAttribute("r", "1.9");
+        if (index === shown - 1 && index > 0 && motionAllowed()) {
+          dot.classList.add("is-arriving");
+        }
         depthHistoryChart.append(dot);
       }
     }
@@ -437,18 +564,32 @@ function renderBook(frame, previousFrame, animate) {
   const bidProfile = depthProfile(frame.bids, true, priceLevels);
   const askProfile = depthProfile(frame.asks, false, priceLevels);
 
+  // How much each resting order gave up on this step. An order the engine filled
+  // away entirely is not in the snapshot at all, so it appears only in the fill
+  // receipts; a partially filled one is still in the book and can say so.
+  const filledById = new Map();
+  for (const trade of frame.trades) {
+    filledById.set(
+      trade.restingOrderId,
+      (filledById.get(trade.restingOrderId) ?? 0n) + integerText(trade.quantity, "trade quantity"),
+    );
+  }
+  // The caption only explains the − mark on a step that has one, but its space
+  // is reserved either way so the caption never changes height.
+  deltaNote.classList.toggle("is-shown", filledById.size > 0);
+
   for (const [index, price] of priceLevels.entries()) {
     const row = node("div", "book-row");
     row.setAttribute("role", "row");
     if (animate && touchedPrices.has(price)) row.classList.add("is-touched");
-    const buyCell = renderSideCell(bids.get(price), bidProfile[index], "buy");
+    const buyCell = renderSideCell(bids.get(price), bidProfile[index], "buy", filledById);
     const bidBand = node("span", "chart-cell chart-cell-buy");
     bidBand.setAttribute("aria-hidden", "true");
     const priceCell = node("span", "price-cell", price);
     priceCell.setAttribute("role", "cell");
     const askBand = node("span", "chart-cell chart-cell-ask");
     askBand.setAttribute("aria-hidden", "true");
-    const sellCell = renderSideCell(asks.get(price), askProfile[index], "sell");
+    const sellCell = renderSideCell(asks.get(price), askProfile[index], "sell", filledById);
     row.append(buyCell, bidBand, priceCell, askBand, sellCell);
     priceLadder.append(row);
   }
@@ -468,8 +609,9 @@ function renderBook(frame, previousFrame, animate) {
     bestPrices.textContent = `${bidText} · ${askText}${gapText}`;
   }
 
-  renderDepthChart(previousFrame, animate);
-  renderHistory();
+  clearMotionTimers();
+  renderDepthChart(previousFrame, animate, true);
+  renderHistory(true);
 }
 
 function renderTrades(frame, animate) {
@@ -490,12 +632,13 @@ function renderTrades(frame, animate) {
 }
 
 function timelineButton(step, label, rejected) {
-  const button = node("button", rejected ? "event-choice is-rejected" : "event-choice");
+  const button = node("button", "event-choice");
   button.type = "button";
   button.append(
     node("span", "event-index", String(step).padStart(2, "0")),
     node("span", "event-label", label),
   );
+  if (rejected) button.append(node("span", "event-flag", "refused"));
   button.setAttribute("aria-label", rejected
     ? `Step ${step}: rejected, ${label}`
     : `Step ${step}: ${label}`);
@@ -511,9 +654,7 @@ function renderTimeline() {
 
   for (const frame of frames.slice(1)) {
     const item = node("li");
-    const rejected = frame.accepted === false;
-    const label = rejected ? `${eventLabel(frame.event)} · refused` : eventLabel(frame.event);
-    item.append(timelineButton(frame.step, label, rejected));
+    item.append(timelineButton(frame.step, eventLabel(frame.event), frame.accepted === false));
     eventList.append(item);
   }
 }
@@ -564,17 +705,23 @@ function setStep(step, { animate = false, keepPlayback = false } = {}) {
   // driven by the trace: more than one resting order gets filled.
   const nextFrame = frames[currentStep + 1];
   const restingTouched = new Set(nextFrame?.trades.map((trade) => trade.restingOrderId) ?? []);
+  // The question is asked only when the next event fills against more than one
+  // resting order, so it is never asked when there is no queue decision to
+  // make. It is revealed rather than shown so the panel keeps one height and
+  // the rail does not shift as the reader steps.
   if (restingTouched.size > 1) {
-    prediction.hidden = false;
-    prediction.textContent = `Next: ${eventLabel(nextFrame.event)}. Which resting order fills first?`;
+    prediction.classList.add("is-asked");
+    predictionText.textContent = `Next: ${eventLabel(nextFrame.event)}. Which resting order fills first?`;
   } else {
-    prediction.hidden = true;
-    prediction.textContent = "";
+    prediction.classList.remove("is-asked");
+    predictionText.textContent = "";
   }
 
-  const label = currentStep === 0 ? "Start" : eventLabel(frame.event) +
-    (frame.accepted === false ? " · refused" : "");
-  playbackStatus.textContent = `Step ${currentStep} of ${frames.length - 1} · ${label}`;
+  // The step number is already on screen in the transport, so this line only
+  // carries the event and whether the engine refused it.
+  playbackStatus.textContent = currentStep === 0
+    ? "Empty book"
+    : eventLabel(frame.event) + (frame.accepted === false ? " · refused by the engine" : "");
 }
 
 function startPlayback() {

@@ -11,13 +11,43 @@ The queue is what the example turns on.
 At one price the oldest order fills first, and a change is a cancel and replace, so a modified order goes to the back of its queue even when its price and size do not change.
 Before a fill that has a genuine choice in it, the page asks you to predict which resting order fills first, and it only asks when more than one resting order is actually in the queue.
 
+## How the page is laid out
+
+The transport sits above the workbench so stepping never needs a scroll to reach the control that steps.
+It is one row inside one card: the buttons, the slider, the step counter, and then the current event and the keyboard hint at the far end.
+Below it, a rail on the left holds the event tape, what the selected event did, and the fills it produced, and the order book takes the rest of the width.
+Under 900px the rail dissolves and the page becomes one column in reading order: pick an event, read the book, then read what it did.
+
+The rail panels have fixed heights rather than minimums, so nothing moves as the reader steps.
+The two things that vary by step are the prediction block and the `−` caption under the ladder, and each is revealed with `visibility` rather than shown with `display` so its space stays reserved.
+A measured sweep across every step of all three traces, from 1440px down to 320px, holds each panel at one position and one height.
+
+Each resting order is a ticket in its own queue, numbered from 1, so the FIFO position the page is about is written out rather than implied by colour.
+A ticket that gave up size on the current step carries a `−`.
+An order the engine filled away entirely is not in the snapshot at all, so it appears only in the fills list; both lists use the same order ids.
+A refused event is labelled `refused` in the tape, not only tinted.
+
+The colour system is one accent.
+Leaf green means "you chose this" or "this got filled": the selected event, the fills, and the bid side.
+The ask side is graphite, so the two sides never both look like the accent and the layout carries the side without relying on colour.
+
+`docs/DESIGN_THEME.md` records the palette, the type scale, the spacing, and the motion rules, so the next page starts from the same language instead of reinventing it.
+
+## Motion
+
+Every animation is decoration on top of a redraw, keyed to values already in the trace.
+The depth edge draws outward from the price axis, a leaf sweep is drawn across the row where depth left the book, the previous profile fades as a ghost, and the history line grows with its newest dot arriving last.
+The sweep and the ghost describe the change rather than the new state, so both are skipped entirely under `prefers-reduced-motion`; a shape that appears and vanishes without a fade is a flash, and the new profile, the `−` marks and the fills list already say what changed.
+The draw-in is only replayed on a step, never on a resize, or the edges would flicker while a window is dragged.
+
 ## The two charts
 
 **Cumulative depth by price.** Each price row is filled out to the total size resting from the touch out to that price, not the size at that level alone.
 Bids grow leftward from the best bid and asks grow rightward from the best ask, so the two profiles never meet in the middle.
 The price rows between the touch on each side are the spread, which the panel heading states as a price gap.
-Price is the vertical axis and is shared with the ladder, so a bar and the queue it belongs to are always on the same row.
-The order ids live in their own columns either side of the chart, so a bar never covers its own queue, and the bands are trimmed so the value at the deepest tip has a gutter to sit in.
+Price is the vertical axis and is shared with the ladder, drawn as a continuous band the bars grow out of, so a bar and the queue it belongs to are always on the same row.
+The queue tickets live in their own columns either side of the chart, so a bar never covers its own queue, and the bands are trimmed so the value at the deepest tip has a gutter to sit in.
+Below 660px the tickets win the extra width and the price axis narrows, and below 360px the position number is dropped; the order id, its size, and the queue's top-to-bottom order all survive.
 
 Bar length is scaled to the deepest depth anywhere in the replay and never rescales between steps.
 That is the whole point: a book that just lost four units has to look thinner.
