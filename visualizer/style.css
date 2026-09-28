@@ -1,0 +1,982 @@
+:root {
+  color-scheme: light;
+  --paper: #f6f4ef;
+  --panel: #fffefa;
+  --ink: #20262d;
+  --muted: #667078;
+  --line: #dcd7ce;
+  --line-soft: #ebe7df;
+  --copper: #93643a;
+  --copper-soft: #f4ede3;
+  --buy: #4d7064;
+  --buy-soft: #eaf0ec;
+  --sell: #9c5b41;
+  --sell-soft: #f5ece7;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--paper);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--copper) 65%, white);
+  outline-offset: 3px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1320px;
+  min-height: 62px;
+  margin: 0 auto;
+  padding: 0 34px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  text-decoration: none;
+}
+
+.wordmark span {
+  color: var(--copper);
+}
+
+.source-link {
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+
+.source-link:hover {
+  color: var(--ink);
+}
+
+.source-link span {
+  margin-left: 3px;
+  color: var(--copper);
+}
+
+.page-shell {
+  width: min(100% - 68px, 1252px);
+  margin: 0 auto;
+  padding: 42px 0 22px;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 18px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(31px, 3.5vw, 42px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+
+/* What the page is, before the instrument. Two columns at wide widths: a single
+   narrow column of prose leaves half the page empty and pushes the playback
+   controls below the fold. */
+.page-intro {
+  margin-bottom: 24px;
+}
+
+.intro-copy {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0 34px;
+}
+
+.intro-copy p {
+  margin-bottom: 0;
+  color: #505960;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.workbench {
+  display: grid;
+  grid-template-areas: "timeline book detail";
+  grid-template-columns: minmax(210px, 0.72fr) minmax(420px, 1.55fr) minmax(255px, 0.88fr);
+  align-items: stretch;
+  gap: 13px;
+}
+
+.panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel);
+}
+
+.event-panel {
+  grid-area: timeline;
+  padding: 17px 15px 13px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 19px;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 15px;
+  font-weight: 630;
+  letter-spacing: -0.025em;
+}
+
+.event-count,
+.step-number {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.panel-note {
+  margin: 14px 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.event-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-choice {
+  display: grid;
+  grid-template-columns: 23px minmax(0, 1fr);
+  align-items: baseline;
+  width: 100%;
+  min-height: 35px;
+  padding: 8px 8px 8px 9px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: #49525a;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.event-choice:hover {
+  background: #f5f2ec;
+  color: var(--ink);
+}
+
+.event-choice[aria-current="step"] {
+  border-left-color: var(--copper);
+  background: var(--copper-soft);
+  color: var(--ink);
+}
+
+.event-index {
+  color: #666d71;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-choice[aria-current="step"] .event-index {
+  color: #7b5229;
+}
+
+.event-label {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-panel {
+  grid-area: book;
+  padding: 17px 18px 0;
+}
+
+.book-heading {
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.best-prices {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Five columns: the FIFO order text sits in the outer columns and the chart
+   owns the inner bands, so a value printed at a bar tip can never land on an
+   order id. The price column between them is the chart's shared axis. */
+.book-columns,
+.book-row,
+.depth-axis {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) minmax(0, 1.2fr) 56px minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+}
+
+.book-columns {
+  margin-top: 15px;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.035em;
+}
+
+.book-columns > :first-child {
+  grid-column: 1 / span 2;
+}
+
+.book-columns > :last-child {
+  grid-column: 4 / span 2;
+}
+
+.book-columns .price-heading {
+  text-align: center;
+}
+
+.ask-heading {
+  text-align: left;
+}
+
+.price-ladder {
+  display: grid;
+}
+
+.book-row {
+  min-height: 67px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.book-row:last-child {
+  border-bottom: 0;
+}
+
+.animate-step .book-row.is-touched .price-cell {
+  animation: price-touch 650ms ease-out 120ms both;
+}
+
+/* The chart bands are their own grid columns. --chart-span trims them so a
+   value printed at the deepest bar tip has room before the order text starts.
+   Every rule that positions by depth reads this one variable, including
+   chartBand() in app.js, so they cannot drift apart. */
+:root {
+  --chart-span: 86%;
+}
+
+.ladder-wrap {
+  position: relative;
+}
+
+.depth-chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.depth-area-buy {
+  fill: var(--buy-soft);
+}
+
+.depth-area-ask {
+  fill: var(--sell-soft);
+}
+
+.depth-edge {
+  fill: none;
+  stroke-width: 1;
+}
+
+.depth-edge-buy {
+  stroke: var(--buy);
+}
+
+.depth-edge-ask {
+  stroke: var(--sell);
+}
+
+.depth-max-line {
+  stroke: var(--line);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+/* The value at each bar tip. Muted and heavier than the order text on
+   purpose: at full depth the tip sits a few pixels from an order id, and at the
+   same size and colour in the same font the two read as one token. */
+.depth-tip {
+  fill: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.depth-ghost {
+  opacity: 0;
+  transition: opacity 520ms ease-out;
+}
+
+.depth-ghost.is-visible {
+  opacity: 0.55;
+}
+
+.side-cell {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.side-cell.buy-side {
+  text-align: right;
+}
+
+/* The drawn value, kept in the accessibility tree and in the DOM for the
+   chart test, since the visible label lives inside the SVG. */
+.depth-value {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.buy-side .order-lines {
+  color: var(--buy);
+}
+
+.sell-side .order-lines {
+  color: var(--sell);
+}
+
+/* A price level with a queue in it wraps rather than truncating, because the
+   queue order is the lesson and "the second order" is the part that would be
+   cut. */
+.order-lines {
+  min-height: 11px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.chart-cell {
+  display: block;
+  align-self: stretch;
+}
+
+.price-cell {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: center;
+}
+
+.depth-axis {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr);
+  column-gap: 8px;
+  padding: 4px 8px 0;
+}
+
+/* The scale is the replay's deepest depth, parked where a maximum bar ends.
+   --chart-span keeps it there when the bands are trimmed. */
+.axis-scale {
+  width: var(--chart-span, 86%);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.buy-axis {
+  grid-column: 2;
+  margin-left: auto;
+  text-align: left;
+}
+
+.sell-axis {
+  grid-column: 4;
+  text-align: right;
+}
+
+.axis-caption {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.matching-rule {
+  display: flex;
+  align-items: baseline;
+  gap: 11px;
+  margin: 11px -18px 0;
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.rule-label {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--copper);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.matching-rule p {
+  margin: 0;
+  color: #505960;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.depth-history {
+  margin: 14px 0 0;
+}
+
+.history-chart {
+  display: block;
+  width: 100%;
+  height: 64px;
+  overflow: visible;
+}
+
+.history-line {
+  fill: none;
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+.history-line-bid {
+  stroke: var(--buy);
+}
+
+.history-line-ask {
+  stroke: var(--sell);
+}
+
+.history-dot {
+  stroke-width: 1;
+}
+
+.history-dot-bid {
+  fill: var(--panel);
+  stroke: var(--buy);
+}
+
+.history-dot-ask {
+  fill: var(--panel);
+  stroke: var(--sell);
+}
+
+.history-cursor {
+  stroke: var(--copper);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.history-caption {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.parameter-panel {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.parameter-panel[hidden] {
+  display: none;
+}
+
+.parameter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 10px;
+  margin-top: 13px;
+}
+
+.parameter-grid label,
+.parameter-toggle {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.parameter-grid input,
+.parameter-grid select {
+  width: 100%;
+  min-height: 27px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.parameter-grid input:disabled {
+  color: #82878a;
+  background: #f4f2ed;
+}
+
+.parameter-toggle {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  margin-top: 11px;
+  font-size: 10px;
+}
+
+.parameter-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--copper);
+}
+
+.parameter-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.event-choice.is-rejected .event-label {
+  color: var(--sell);
+}
+
+.event-choice.is-rejected .event-index {
+  color: #8a3f28;
+}
+
+.detail-column {
+  grid-area: detail;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 13px;
+}
+
+.selected-panel,
+.trades-panel {
+  padding: 17px 16px;
+}
+
+.selected-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 196px;
+}
+
+.step-number {
+  align-self: flex-start;
+  padding-top: 2px;
+}
+
+.event-summary {
+  margin: 19px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}
+
+.animate-step .event-summary {
+  animation: event-arrive 180ms ease-out both;
+}
+
+.event-explanation {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* The question to answer before pressing Next. It only appears when the next
+   event fills against more than one resting order, so it is never asked when
+   there is no queue decision to make. */
+.prediction {
+  margin: 14px 0 0;
+  padding: 9px 11px;
+  border-left: 2px solid var(--copper);
+  background: var(--copper-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.prediction[hidden] {
+  display: none;
+}
+
+.trades-panel {
+  min-height: 180px;
+}
+
+.empty-trades {
+  margin: 19px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.trade-list {
+  display: grid;
+  gap: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trade-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.trade-list.is-animating .trade-item {
+  animation: trade-in 220ms ease-out both;
+}
+
+.trade-index {
+  color: var(--copper);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.trade-counterparty {
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.trade-values {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.playback {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 23px;
+  margin-top: 15px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.playback-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.control-button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: #424a50;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
+}
+
+.control-button:hover:not(:disabled) {
+  border-color: #afa79a;
+  background: #f4f1eb;
+  color: var(--ink);
+}
+
+.control-button:disabled {
+  color: #82878a;
+  cursor: not-allowed;
+}
+
+.play-button {
+  min-width: 58px;
+  border-color: var(--copper);
+  background: var(--copper);
+  color: white;
+}
+
+.play-button:hover:not(:disabled) {
+  border-color: #754a28;
+  background: #754a28;
+  color: white;
+}
+
+.progress-control {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-label {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--copper);
+  cursor: pointer;
+}
+
+.keyboard-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.load-error {
+  margin: 18px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--sell);
+  background: var(--sell-soft);
+  color: #553629;
+  font-size: 12px;
+}
+
+@keyframes event-arrive {
+  from { opacity: 0.4; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes price-touch {
+  0% { background-color: transparent; }
+  28% { background-color: var(--copper-soft); }
+  100% { background-color: transparent; }
+}
+
+@keyframes trade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 1020px) {
+  .page-shell {
+    width: min(100% - 48px, 850px);
+    padding-top: 34px;
+  }
+
+  .topbar {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+
+  .workbench {
+    grid-template-areas:
+      "timeline book"
+      "detail detail";
+    grid-template-columns: minmax(205px, 0.66fr) minmax(0, 1.5fr);
+  }
+
+  .detail-column {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+
+  .selected-panel,
+  .trades-panel {
+    min-height: 175px;
+  }
+}
+
+@media (max-width: 660px) {
+  .topbar {
+    min-height: 54px;
+    padding: 0 18px;
+  }
+
+  .page-shell {
+    width: calc(100% - 36px);
+    padding-top: 27px;
+  }
+
+  .page-intro {
+    display: block;
+    margin-bottom: 19px;
+  }
+
+  h1 {
+    max-width: 460px;
+    font-size: 34px;
+  }
+
+  .workbench {
+    grid-template-areas:
+      "timeline"
+      "detail"
+      "book";
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .event-panel {
+    padding: 14px 13px 12px;
+  }
+
+  .event-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .book-panel {
+    padding: 14px 13px 0;
+  }
+
+  .intro-copy {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px 0;
+  }
+
+  /* Narrow columns leave the deepest tip label only a few pixels from the order
+     text, so trim the bands further to buy the gutter back. */
+  :root {
+    --chart-span: 78%;
+  }
+
+  .book-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .best-prices {
+    text-align: left;
+  }
+
+  .matching-rule {
+    margin-right: -13px;
+    margin-left: -13px;
+    padding-right: 13px;
+    padding-left: 13px;
+  }
+
+  .detail-column {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .selected-panel,
+  .trades-panel {
+    min-height: auto;
+    padding: 14px 13px;
+  }
+
+  .event-summary {
+    margin-top: 15px;
+  }
+
+  .playback {
+    grid-template-columns: 1fr auto;
+    gap: 11px 14px;
+    margin-top: 12px;
+  }
+
+  .playback-buttons {
+    grid-column: 1 / -1;
+  }
+
+  .playback-buttons .control-button {
+    flex: 1;
+  }
+
+  .progress-control {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .keyboard-hint {
+    align-self: end;
+    padding-bottom: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

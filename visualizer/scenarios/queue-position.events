@@ -1,0 +1,10 @@
+# The same four-unit sell, with one order re-sent before it arrives.
+# A modify is a cancel and replace, so re-sending order 1 at the same price and
+# the same size moves it behind order 2 and the fills reverse.
+ADD 1 BUY 100 3
+ADD 2 BUY 100 2
+ADD 3 BUY 99 2
+MODIFY 1 100 3
+ADD 4 SELL 101 3
+ADD 5 SELL 102 2
+ADD 6 SELL 100 4

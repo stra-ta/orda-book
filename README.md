@@ -4,6 +4,10 @@
 
 A single-threaded C++17 limit-order matching engine and replay lab.
 
+[Step through one matching example](visualizer/README.md) in the browser, or open the [hosted copy](https://stra-ta.github.io/orda-book/).
+The book, the fills, and every chart on it come from the C++ matcher.
+It uses example prices and is not a live market chart.
+
 ![Order ingress, matching, backends, trades, and evidence](docs/ARCHITECTURE_OVERVIEW.svg)
 
 The baseline backend is the correctness control.

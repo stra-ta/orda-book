@@ -1,7 +1,9 @@
 build/
 build-*/
 Testing/
+_site/
 *.o
 *.a
 compile_commands.json
 .DS_Store
+__pycache__/

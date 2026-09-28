@@ -1,0 +1,7 @@
+# Four units sell into two buy orders at 100. The older order fills first.
+ADD 1 BUY 100 3
+ADD 2 BUY 100 2
+ADD 3 BUY 99 2
+ADD 4 SELL 101 3
+ADD 5 SELL 102 2
+ADD 6 SELL 100 4

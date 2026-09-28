@@ -1,0 +1,6 @@
+{
+  "name": "orda-book-visualizer",
+  "private": true,
+  "type": "module",
+  "description": "Marks this folder as ES modules. Without it, node --check parses a .js file that uses import as CommonJS, hits the import first, and reports success for a syntax error further down. There are no dependencies and nothing to install."
+}

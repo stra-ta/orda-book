@@ -84,6 +84,69 @@ target_compile_options(orda_tests PRIVATE ${LOB_WARNING_FLAGS})
 include(CTest)
 enable_testing()
 add_test(NAME orda_tests COMMAND orda_tests)
+add_test(
+  NAME visualizer_trace_fixture
+  COMMAND ${CMAKE_COMMAND}
+    "-DREPLAY=$<TARGET_FILE:orda_replay>"
+    "-DEVENTS=${CMAKE_CURRENT_SOURCE_DIR}/visualizer/scenarios/price-time-priority.events"
+    "-DEXPECTED=${CMAKE_CURRENT_SOURCE_DIR}/visualizer/data/price-time-priority.json"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_visualizer_trace.cmake"
+)
+
+# A scenario the engine refuses, so the page's rejection rendering is guarded
+# by a checked fixture rather than by a scenario nobody can reach.
+add_test(
+  NAME visualizer_rejection_fixture
+  COMMAND ${CMAKE_COMMAND}
+    "-DREPLAY=$<TARGET_FILE:orda_replay>"
+    "-DEVENTS=${CMAKE_CURRENT_SOURCE_DIR}/visualizer/scenarios/rejections.events"
+    "-DEXPECTED=${CMAKE_CURRENT_SOURCE_DIR}/visualizer/data/rejections.json"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_visualizer_trace.cmake"
+)
+
+# The counterfactual behind the parameter panel's modify toggle. Re-sending the
+# older bid at the same price and size moves it to the back of its queue.
+add_test(
+  NAME visualizer_queue_position_fixture
+  COMMAND ${CMAKE_COMMAND}
+    "-DREPLAY=$<TARGET_FILE:orda_replay>"
+    "-DEVENTS=${CMAKE_CURRENT_SOURCE_DIR}/visualizer/scenarios/queue-position.events"
+    "-DEXPECTED=${CMAKE_CURRENT_SOURCE_DIR}/visualizer/data/queue-position.json"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_visualizer_trace.cmake"
+)
+
+# The depth chart is the one place the page derives its own numbers, so its
+# arithmetic is checked against the trace. Skipped where Node is absent rather
+# than failing a C++-only runner.
+find_program(LOB_NODE node)
+if(LOB_NODE)
+  add_test(
+    NAME visualizer_depth_chart
+    COMMAND ${LOB_NODE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/check-depth.mjs"
+      "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/data/price-time-priority.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/data/rejections.json"
+  )
+
+  # The lesson itself, and the one assertion a fixture test cannot make: that
+  # the two runs differ in fill order, rather than in price or size.
+  add_test(
+    NAME visualizer_priority_order
+    COMMAND ${LOB_NODE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/check-priority.mjs"
+      "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/data/price-time-priority.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/data/queue-position.json"
+  )
+
+  # app.js is the page's only script and nothing else in the suite parses it, so
+  # a syntax error there would pass every other test and publish a blank page.
+  add_test(
+    NAME visualizer_script_syntax
+    COMMAND ${LOB_NODE} --check "${CMAKE_CURRENT_SOURCE_DIR}/visualizer/app.js"
+  )
+else()
+  message(STATUS "node not found, skipping the visualizer depth, priority, and syntax tests")
+endif()
 
 if(LOB_BUILD_FUZZER)
   add_executable(orda_fuzz

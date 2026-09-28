@@ -1,0 +1,64 @@
+name: Pages
+
+# Publishes the visualizer to https://stra-ta.github.io/orda-book/.
+#
+# The page runs in its static mode here. On load it probes /api/trace, finds no
+# engine behind it, and draws the checked-in trace instead. The dev server in
+# scripts/ is never part of the artifact.
+#
+# Repository Pages has to be enabled once with "GitHub Actions" as the source
+# before this can deploy. That step is manual: configure-pages can do it only
+# with a token other than GITHUB_TOKEN, so it is used here for metadata only.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "visualizer/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Top level, not per job, and deliberately so. A job-level permissions block
+# replaces this one instead of merging with it, and anything it omits is set to
+# none, which would leave actions/checkout unable to clone the repository.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Stage the page
+        run: |
+          mkdir -p _site
+          cp -R visualizer/. _site/
+          # Both live in the folder and neither is site content: the Node check
+          # scripts belong to CTest, the package manifest only marks the module
+          # type for Node, and the Markdown README is not a page.
+          # No -f, so renaming one of them fails the deploy instead of quietly
+          # publishing a test script to a public URL.
+          rm _site/README.md _site/package.json _site/check-depth.mjs _site/check-priority.mjs
+          # Fail here rather than deploy a site with no entry point behind it.
+          test -f _site/index.html
+          test -f _site/data/price-time-priority.json
+
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: _site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5

@@ -1,0 +1,8 @@
+# Two buy orders at the same price, then three orders the engine refuses.
+# A rejected event changes nothing: the book and the trade log stay as they were.
+ADD 1 BUY 100 3
+ADD 2 BUY 100 2
+ADD 1 BUY 101 1
+ADD 3 SELL 100 1 POST_ONLY
+ADD 4 SELL 100 9 FOK
+ADD 5 BUY 100 1
