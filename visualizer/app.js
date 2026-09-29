@@ -837,6 +837,60 @@ function syncCodeScrollability() {
 new ResizeObserver(syncCodeScrollability).observe(document.querySelector(".code-panel"));
 syncCodeScrollability();
 
+// A small C++ highlighter, run over the plain text the file already holds. The
+// markup stays plain so check-source.mjs compares src/ against what is written
+// down rather than against decoration, and the highlight can be wrong without
+// changing a word.
+const CPP_KEYWORDS = new Set([
+  "auto", "bool", "case", "class", "const", "constexpr", "continue", "default",
+  "delete", "do", "double", "else", "enum", "explicit", "false", "float", "for",
+  "if", "inline", "int", "long", "namespace", "new", "noexcept", "nullptr",
+  "operator", "private", "protected", "public", "return", "short", "signed",
+  "sizeof", "static", "struct", "switch", "template", "this", "throw", "true",
+  "try", "typedef", "typename", "unsigned", "using", "virtual", "void",
+  "volatile", "while",
+]);
+
+// Comments and string literals come first in the alternation, so a keyword
+// inside either is never mistaken for one.
+const CPP_TOKEN = /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(\bstd::[A-Za-z_]\w*)|([A-Za-z_]\w*)/g;
+
+function highlightCpp(block) {
+  const source = block.textContent;
+  if (!source) return;
+  const fragment = document.createDocumentFragment();
+  let consumed = 0;
+  for (const match of source.matchAll(CPP_TOKEN)) {
+    const [text, comment, literal, qualified, name] = match;
+    if (match.index > consumed) fragment.append(source.slice(consumed, match.index));
+    // A qualified name is a function if a call or a template argument list
+    // follows it, and a type otherwise: std::min( is a call, std::map< is not.
+    const next = source.slice(match.index + text.length).match(/^\s*[(<]/);
+    let token = null;
+    if (comment) token = "tok-comment";
+    else if (literal) token = "tok-str";
+    else if (qualified) token = next ? "tok-fn" : "tok-type";
+    else if (CPP_KEYWORDS.has(name)) token = "tok-kw";
+    else if (/^\s*\(/.test(source.slice(match.index + name.length))) token = "tok-fn";
+    // Uppercase names are types in this codebase. That is a convention and not a
+    // rule, and it is the only guess in here: it changes a colour and nothing else.
+    else if (/^[A-Z]/.test(name)) token = "tok-type";
+    if (token) fragment.append(node("span", token, text));
+    else fragment.append(document.createTextNode(text));
+    consumed = match.index + text.length;
+  }
+  if (consumed < source.length) fragment.append(source.slice(consumed));
+  block.replaceChildren(fragment);
+  if (block.textContent !== source) {
+    // The file is the truth. A highlight that changed a word is a bug here, not
+    // a reason to show the reader something else.
+    block.textContent = source;
+    console.error("orda-book code highlight changed the text and was reverted");
+  }
+}
+
+for (const block of document.querySelectorAll(".code-block")) highlightCpp(block);
+
 // Text wraps differently at a different width, so the tallest step in a run can
 // change with the viewport. Only a width change triggers a re-measure, which
 // also stops the height it sets from feeding back into another measurement.

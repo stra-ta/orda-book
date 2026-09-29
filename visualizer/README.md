@@ -76,7 +76,7 @@ Each bar's value stays in the DOM as `data-cumulative` and in the accessibility 
 
 The page's one dark band opens a section at the foot of the page, and that band is where the provenance claim lives: every number above came out of `lob::OrderBook`, and the page runs no matching logic of its own.
 
-Under it are five excerpts, each a claim the replay above demonstrates:
+Under it are five excerpts, each a claim the replay above demonstrates, written as a document rather than a grid of cards: a heading, a paragraph saying what the code is for, the excerpt, and the source link under it.
 
 - a price level is a `std::list` in arrival order, so the queue is the list itself
 - the levels sit in a `std::map` keyed so the best price is first on each side
@@ -87,8 +87,9 @@ Every excerpt is verbatim, including the source indentation, and the line number
 Each one links to a permalink pinned to a commit rather than to `main`, so a quote and its link cannot drift apart: the quoted lines stay the lines the link opens, whatever happens to the file later.
 `check-source.mjs` completes the other half, by re-reading `src/` and failing the build when the page and the source disagree.
 
-The last block in that section is the one piece of prose on the page that is not a claim about a single line.
-It says why the book is a map of lists, what that costs, and which of the other two backends trades the cost differently, because the excerpts show what the code does and this is the part a reader cannot get from four lines of a header.
+The excerpt text is plain in the markup and highlighted at load, so the file stays something a test can compare against `src/` and the highlight is decoration that can be wrong without changing a word. It also puts the text back if it ever does.
+
+The last item in that section has no excerpt, because it is not a claim about any single line. It says why the book is a map of lists, what that costs, and which of the other two backends trades the cost differently, which is the part a reader cannot get from four lines of a header.
 
 ## Run it statically
 

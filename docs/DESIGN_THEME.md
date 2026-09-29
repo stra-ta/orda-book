@@ -96,13 +96,21 @@ Three sizes on any one screen, and two families.
   There are three or four on a screen and nothing else is uppercase.
 
 The quoted code is the one place the mono font is not carrying a number.
-It is 11.5px on a wide screen and 11px below 900px, where the excerpt is stacked
-in a narrower column than the two-column form allows.
+It is 11.5px on a wide screen and 11px below 900px, where a phone is close
+enough to the column width that a step down keeps the longest quote inside its
+block.
 It is also the only text on the page allowed to scroll sideways: a wrapped line
 of C++ is a line the reader has to reconstruct, so the block scrolls instead.
 When it does scroll it takes `tabindex`, so the reader can reach and scroll it
 from the keyboard, and only then, so a wide window does not add five stops to the
 tab order.
+
+Its highlight is four tones out of the page's own greys, plus weight. The leaf
+accent already means something specific, so the code does not spend it: keywords
+and calls carry the skeleton, types step down, comments recede. The markup holds
+the quotes as plain text and the highlighter runs over that at load, so the file
+stays something a test can compare against the source, and the highlighter puts
+the text back if it ever changes a word.
 
 The queue ticket is the exception worth naming: at 10.5px below 660px it is the
 smallest text on the page, because the id and its size must stay on one line
@@ -127,10 +135,13 @@ keyboard hint at the far end. It is 58px on a laptop and 93px where the hint
 wraps under the controls. Below 660px the hint is dropped entirely, because
 there are no arrow keys on a phone.
 
-The source section is full width under the workbench, and its five excerpts run
-two columns above 1080px, the note beside the code, stacked below that. The
-breakpoint is where the longest quote stops fitting beside its note without the
-block scrolling on its own, which is about 880px of content.
+The source section is full width under the workbench and is set as a document
+rather than a card grid: a heading, a paragraph, the excerpt, and the source link
+under it. The rules between items run the full width of the card and the text sits
+in a column beneath them, so the empty right of the section reads as the measure a
+document is set to and not as a card that ran out. The prose column is 580px and
+each excerpt is as wide as its own longest line, up to 660px, so a short excerpt is
+a short block and the right of the column is a rag.
 
 The parameter panel, which only the loopback dev server reveals, sits full width
 between the transport and the replay rather than in the rail. The book column
@@ -138,14 +149,10 @@ cannot grow to match a card that tall, so in the rail it left the whole right
 column empty below the book: 566px of nothing at the widths where a reader would
 see it.
 
-Two things in the source section are not in the page's usual shape. The run switch sits
-under the intro, not in the transport, because the transport is a position within
-one run and the switch is which run, and one card holding both would make the
-control bar two things at once. It is the same scale as a control button and the
-pressed state is the only accent on the row. The trade-off block at the end of
-the source section is a `--paper` block on a `--panel` card with a rule border,
-the same treatment as a code excerpt, because it is prose about the same code
-rather than a new kind of thing.
+The run switch sits under the intro, not in the transport, because the transport
+is a position within one run and the switch is which run, and one card holding both
+would make the control bar two things at once. It is the same scale as a control
+button and the pressed state is the only accent on that row.
 
 ## Boxes that hold still
 

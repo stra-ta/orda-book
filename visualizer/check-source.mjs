@@ -3,6 +3,9 @@
 //
 // Two independent things can go wrong, so two things are checked.
 //
+// The file holds the quotes as plain text and app.js highlights them at runtime, so
+// this compares the file's own text against the source and never the highlight.
+//
 // The quote can drift from src/. Edit order_book.cpp and the page keeps showing
 // the old text at the old line numbers, which fails silently, so each excerpt is
 // compared against the working tree.
@@ -61,7 +64,10 @@ const unescape = (text) => text
   .replace(/&#39;/g, "'")
   .replace(/&amp;/g, "&");
 
-const items = [...page.matchAll(/<li class="code-item">([\s\S]*?)<\/li>/g)].map((match) => match[1]);
+// The walkthrough is a document: a heading, a paragraph, the excerpt, and the
+// source link, in one .code-item. The trade-off item has no excerpt and so is not
+// one of these, which is why the count asserted below is a number.
+const items = [...page.matchAll(/<div class="code-item">([\s\S]*?)<\/div>/g)].map((match) => match[1]);
 
 // A count, not a floor. If the markup is reshaped and the pattern stops matching,
 // an empty list would otherwise pass every assertion below it.
