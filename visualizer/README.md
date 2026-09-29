@@ -78,7 +78,9 @@ The page's one dark band opens a section at the foot of the page, and that band 
 
 That section is not a card. It sits on the page the way the title and the intro do, because a card under a column of text puts a white canvas beside the text that the text does not fill, and an unfilled part of a white rectangle reads as dead space where the same amount of page beside the hero reads as margin.
 
-Under it are five excerpts, each a claim the replay above demonstrates, written as a document rather than a grid of cards: a heading, a paragraph saying what the code is for, the excerpt, and the source link under it.
+Under it are five excerpts, each a claim the replay above demonstrates, written as a document rather than a grid of cards: a heading across the top, then a paragraph saying what the code is for on the left and the excerpt on the right with its source link underneath.
+
+The section is on the page, not on a card, and the contrast is the point of that: an unfilled part of a white rectangle reads as dead space, where the same amount of page beside the title reads as margin. The excerpts are the exception, because code is something you look at inside a box. Argument on the ground, evidence in a box.
 
 - a price level is a `std::list` in arrival order, so the queue is the list itself
 - the levels sit in a `std::map` keyed so the best price is first on each side
@@ -88,6 +90,8 @@ Under it are five excerpts, each a claim the replay above demonstrates, written 
 Every excerpt is verbatim, including the source indentation, and the line numbers are the ones in this repository.
 Each one links to a permalink pinned to a commit rather than to `main`, so a quote and its link cannot drift apart: the quoted lines stay the lines the link opens, whatever happens to the file later.
 `check-source.mjs` completes the other half, by re-reading `src/` and failing the build when the page and the source disagree.
+
+Each excerpt is a `<figure>` with the source link as its `<figcaption>`, so the pair is one thing to a screen reader and one thing to lay out. The code column is a fixed width rather than sized to its content, which is what keeps every excerpt starting at the same x.
 
 The excerpt text is plain in the markup and highlighted at load, so the file stays something a test can compare against `src/` and the highlight is decoration that can be wrong without changing a word. It also puts the text back if it ever does.
 

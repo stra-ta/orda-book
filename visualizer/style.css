@@ -984,8 +984,27 @@ input[type="range"] {
   border-top: 1px solid var(--rule);
 }
 
+/* The excerpt sits beside the prose rather than under it, so the paragraph reads
+   as a note on the code instead of a caption above it. The heading spans both,
+   because it is the subject of the whole item. The prose track has a floor of
+   320px, which is where the two-column form stops fitting and the excerpt moves
+   back under its own paragraph. */
+.code-item {
+  display: grid;
+  /* A fixed width for the code column, not max-content: the excerpts are each as
+     wide as their own longest line, so a content-sized column would right-align
+     them and every item would start its code at a different x. */
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 640px);
+  grid-template-areas:
+    "heading heading"
+    "prose   excerpt";
+  align-items: start;
+  gap: 12px 30px;
+}
+
 .code-heading {
-  margin: 0 0 7px;
+  grid-area: heading;
+  margin: 0;
   color: var(--ink);
   font-size: 15px;
   font-weight: 650;
@@ -993,16 +1012,24 @@ input[type="range"] {
 }
 
 .code-prose {
+  grid-area: prose;
   max-width: 580px;
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.58;
 }
 
+.code-excerpt {
+  grid-area: excerpt;
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+}
+
 .code-ref {
-  display: inline-block;
-  margin-top: 7px;
   color: var(--subtle);
   font-family: var(--mono);
   font-size: 11px;
@@ -1024,9 +1051,10 @@ input[type="range"] {
   overflow-x: auto;
   border: 1px solid var(--rule);
   border-radius: 6px;
-  /* Paper, like the axis captions and the tick labels: an excerpt is a plate on
-     the page, and the page is already paper, so the border is what carries it. */
-  background: var(--paper);
+  /* White, like every other card on the page, because an excerpt is code and
+     code is a thing you look at inside a box rather than a plate laid on the
+     page. The rest of this section is prose on the page. */
+  background: var(--panel);
   color: var(--ink-2);
   font-family: var(--mono);
   font-size: 11.5px;
@@ -1177,6 +1205,16 @@ input[type="range"] {
   .workbench {
     grid-template-columns: minmax(230px, 258px) minmax(0, 1fr);
     gap: 14px;
+  }
+
+  /* Below here the prose track would fall under its 320px floor, so the excerpt
+     goes back under its own paragraph and the two read as a document again. */
+  .code-item {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "heading"
+      "prose"
+      "excerpt";
   }
 
 }

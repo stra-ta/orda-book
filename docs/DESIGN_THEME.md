@@ -145,10 +145,20 @@ the page ground, next to the faint grid, a soft rule is nearly invisible and the
 sections run together. The band keeps square corners for the same reason the card was
 removed: it is a section band, and every card on this page is 6px.
 
-It is set as a document rather than a card grid: a heading, a paragraph, the excerpt,
-and the source link under it. The prose column is 580px and each excerpt is as wide as
-its own longest line, up to 660px, so a short excerpt is a short block and the right of
-the column is a rag.
+It is set as a document rather than a card grid: a heading across the top, then the
+paragraph on the left and the excerpt on the right with its source link under it, so
+the paragraph reads as a note on the code instead of a caption above it.
+
+The code column is a fixed 640px and not `max-content`, because the excerpts are each
+as wide as their own longest line and a content-sized column would right-align them
+so that every item began its code at a different x. Fixed, they share one edge and the
+right of the column is a rag. Below 1080px the prose track would fall under its 320px
+floor, so the excerpt moves back under its own paragraph and the two read as a
+document again.
+
+The blocks are white, like every other card on the page, because an excerpt is code
+and code is a thing you look at inside a box. The prose around them is on the page.
+That is the split the section is built on: argument on the ground, evidence in a box.
 
 The parameter panel, which only the loopback dev server reveals, sits full width
 between the transport and the replay rather than in the rail. The book column

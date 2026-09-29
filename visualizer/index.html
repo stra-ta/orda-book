@@ -146,49 +146,59 @@
           <div class="code-item">
             <h3 class="code-heading">Prices sort best first on each side</h3>
             <p class="code-prose">Bids are keyed by a descending comparator and asks by an ascending one, so the first level in each map is the best price on that side. Matching never searches for the touch. It starts there and walks outward, which is why the bars above grow leftward from the best bid and rightward from the best ask.</p>
-            <pre class="code-block"><code>  using BidLevels = std::map&lt;Price, PriceLevel, std::greater&lt;Price&gt;&gt;;
+            <figure class="code-excerpt">
+              <pre class="code-block"><code>  using BidLevels = std::map&lt;Price, PriceLevel, std::greater&lt;Price&gt;&gt;;
   using AskLevels = std::map&lt;Price, PriceLevel, std::less&lt;Price&gt;&gt;;</code></pre>
-            <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.hpp#L49-L50">order_book.hpp:49</a>
+              <figcaption><a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.hpp#L49-L50">order_book.hpp:49</a></figcaption>
+              </figure>
           </div>
 
           <div class="code-item">
             <h3 class="code-heading">A price level is a queue</h3>
             <p class="code-prose">Inside a level the orders are a list in the order they arrived, and nothing reorders it. The queue beside the ladder is that list: the number on each ticket is its position counted from the front, and that is the position which decides who fills first.</p>
-            <pre class="code-block"><code>  struct PriceLevel {
+            <figure class="code-excerpt">
+              <pre class="code-block"><code>  struct PriceLevel {
     Price price{};
     Quantity total_qty{};
     std::list&lt;Order&gt; orders;
   };</code></pre>
-            <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.hpp#L43-L47">order_book.hpp:43</a>
+              <figcaption><a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.hpp#L43-L47">order_book.hpp:43</a></figcaption>
+              </figure>
           </div>
 
           <div class="code-item">
             <h3 class="code-heading">A new order joins the back</h3>
             <p class="code-prose">A resting order is appended, so arriving at a price that already has orders puts the newcomer behind everyone standing there. That is the time half of price-time priority in one call.</p>
-            <pre class="code-block"><code>  PriceLevel&amp; level = ensure_level(side, price);
+            <figure class="code-excerpt">
+              <pre class="code-block"><code>  PriceLevel&amp; level = ensure_level(side, price);
   level.orders.push_back(Order{order_id, side, price, qty});</code></pre>
-            <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L33-L34">order_book.cpp:33</a>
+              <figcaption><a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L33-L34">order_book.cpp:33</a></figcaption>
+              </figure>
           </div>
 
           <div class="code-item">
             <h3 class="code-heading">A fill takes the front</h3>
             <p class="code-prose">A fill takes the front of the level and shrinks it, and an order leaves the queue only when its size reaches zero. The sell on the last event of the default run takes three units from order 1 and one from order 2, because that is the order the two are standing in.</p>
-            <pre class="code-block"><code>        Order&amp; resting = level.orders.front();
+            <figure class="code-excerpt">
+              <pre class="code-block"><code>        Order&amp; resting = level.orders.front();
         const Quantity fill_qty = std::min(incoming_qty, resting.qty);</code></pre>
-            <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L93-L94">order_book.cpp:93</a>
+              <figcaption><a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L93-L94">order_book.cpp:93</a></figcaption>
+              </figure>
           </div>
 
           <div class="code-item">
             <h3 class="code-heading">A modify is a cancel and a replace</h3>
             <p class="code-prose">An accepted modify removes the order first and then matches the replacement, so whatever is left rests at the back of its price queue. Re-sending order 1 at the same price and size changes nothing about the order except its place, which is why the re-sent run above fills order 2 first, on the same two prices and the same four units.</p>
-            <pre class="code-block"><code>  const Side side = it-&gt;second.order_it-&gt;side;
+            <figure class="code-excerpt">
+              <pre class="code-block"><code>  const Side side = it-&gt;second.order_it-&gt;side;
   remove_order(order_id, it-&gt;second);
 
   const Quantity remaining = match_incoming(order_id, side, new_price, new_qty, trades);
   if (remaining &gt; 0) {
     add_resting_order(order_id, side, new_price, remaining);
   }</code></pre>
-            <a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L272-L278">order_book.cpp:272</a>
+              <figcaption><a class="code-ref" href="https://github.com/stra-ta/orda-book/blob/c07fb82/src/order_book.cpp#L272-L278">order_book.cpp:272</a></figcaption>
+              </figure>
           </div>
 
           <div class="code-tradeoff">
