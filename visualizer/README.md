@@ -76,6 +76,8 @@ Each bar's value stays in the DOM as `data-cumulative` and in the accessibility 
 
 The page's one dark band opens a section at the foot of the page, and that band is where the provenance claim lives: every number above came out of `lob::OrderBook`, and the page runs no matching logic of its own.
 
+That section is not a card. It sits on the page the way the title and the intro do, because a card under a column of text puts a white canvas beside the text that the text does not fill, and an unfilled part of a white rectangle reads as dead space where the same amount of page beside the hero reads as margin.
+
 Under it are five excerpts, each a claim the replay above demonstrates, written as a document rather than a grid of cards: a heading, a paragraph saying what the code is for, the excerpt, and the source link under it.
 
 - a price level is a `std::list` in arrival order, so the queue is the list itself

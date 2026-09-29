@@ -920,16 +920,20 @@ input[type="range"] {
 
 /* ---------- the code behind the numbers ---------- */
 
-/* The page's one dark surface. It opens the source section instead of closing
-   the book, so it marks the change of kind from the replay to the engine that
-   produced it, and it carries the provenance claim rather than the matching
-   rule, which the intro already states. */
+/* The document sits on the page, not on a card, the way the title and the intro
+   sit on the page. A card here put a white canvas under a column of text and
+   turned the margin beside it into space the card had failed to fill, which is
+   what the empty right of this section was. The only chrome left is the band. */
 .code-panel {
-  overflow: hidden;
-  margin-top: 16px;
+  margin-top: 34px;
   padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 
+/* Square corners, because it is a section band and not a card, and every card
+   on this page is 6px. */
 .code-band {
   display: flex;
   align-items: baseline;
@@ -965,15 +969,19 @@ input[type="range"] {
    where it came from. The rules between items run the full width of the card and
    the text sits in a column under them, so the empty right of the section reads
    as the measure a document is set to rather than as a card that ran out. */
+/* No side padding, so the document lines up with the title, the cards and the
+   band above it rather than sitting inset inside something. */
 .code-body {
-  padding: 24px 16px 22px;
+  padding: 22px 0 0;
 }
 
 .code-item + .code-item,
 .code-tradeoff {
   margin-top: 22px;
   padding-top: 20px;
-  border-top: 1px solid var(--rule-soft);
+  /* A rule rather than rule-soft: on the page ground, beside the faint grid, a
+     soft rule is nearly invisible and the sections run together. */
+  border-top: 1px solid var(--rule);
 }
 
 .code-heading {
@@ -1016,6 +1024,8 @@ input[type="range"] {
   overflow-x: auto;
   border: 1px solid var(--rule);
   border-radius: 6px;
+  /* Paper, like the axis captions and the tick labels: an excerpt is a plate on
+     the page, and the page is already paper, so the border is what carries it. */
   background: var(--paper);
   color: var(--ink-2);
   font-family: var(--mono);
@@ -1296,7 +1306,7 @@ input[type="range"] {
   }
 
   .code-body {
-    padding: 20px 14px 18px;
+    padding: 18px 0 0;
   }
 
   .book-columns {

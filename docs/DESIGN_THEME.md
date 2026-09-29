@@ -135,13 +135,20 @@ keyboard hint at the far end. It is 58px on a laptop and 93px where the hint
 wraps under the controls. Below 660px the hint is dropped entirely, because
 there are no arrow keys on a phone.
 
-The source section is full width under the workbench and is set as a document
-rather than a card grid: a heading, a paragraph, the excerpt, and the source link
-under it. The rules between items run the full width of the card and the text sits
-in a column beneath them, so the empty right of the section reads as the measure a
-document is set to and not as a card that ran out. The prose column is 580px and
-each excerpt is as wide as its own longest line, up to 660px, so a short excerpt is
-a short block and the right of the column is a rag.
+The source section is not a card.
+It sits on the page the way the title and the intro do, and the only chrome left on
+it is the band. A card under a column of text was the whole problem: it put a white
+canvas beside the text that the text did not fill, and that unfilled part of a white
+rectangle reads as dead space where the same amount of page beside the hero reads as
+margin. The rules between items are `--rule` rather than `--rule-soft`, because on
+the page ground, next to the faint grid, a soft rule is nearly invisible and the
+sections run together. The band keeps square corners for the same reason the card was
+removed: it is a section band, and every card on this page is 6px.
+
+It is set as a document rather than a card grid: a heading, a paragraph, the excerpt,
+and the source link under it. The prose column is 580px and each excerpt is as wide as
+its own longest line, up to 660px, so a short excerpt is a short block and the right of
+the column is a rag.
 
 The parameter panel, which only the loopback dev server reveals, sits full width
 between the transport and the replay rather than in the rail. The book column
