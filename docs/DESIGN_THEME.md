@@ -132,8 +132,19 @@ what it did.
 
 The transport is one flex row that wraps: buttons, slider, counter, then the
 keyboard hint at the far end. It is 58px on a laptop and 93px where the hint
-wraps under the controls. Below 660px the hint is dropped entirely, because
-there are no arrow keys on a phone.
+wraps under the controls. Below 660px the hint is dropped and the counter moves
+off its own line to the end of the slider row, because there are no arrow keys on
+a phone and a third row of chrome is a row the book is pushed down by.
+
+Under 900px the event tape turns sideways into one scrolling row of chips, and
+that is the whole difference between a phone and a tablet here. Stacked, the tape
+sat between the buttons and the book and put the ladder 391px below the control
+that steps it at 390px wide; sideways the tape is 96px instead of 194px and the
+same distance is 249px, which is the whole ladder on screen at once with the
+buttons, at 844px and at 667px. The strip keeps its own padding for the focus
+ring, because a scroller clips an outline, and scrolls itself the shortest
+distance that brings the current or focused chip back into view. It never scrolls
+the page: the reader is watching the book, and the book must not move under them.
 
 The source section is not a card.
 It sits on the page the way the title and the intro do, and the only chrome left on

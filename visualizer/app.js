@@ -669,13 +669,31 @@ function renderTimeline() {
 }
 
 function updateTimelineSelection() {
+  let current = null;
   for (const [index, button] of [...eventList.querySelectorAll("button")].entries()) {
     if (index === currentStep) {
       button.setAttribute("aria-current", "step");
+      current = button;
     } else {
       button.removeAttribute("aria-current");
     }
   }
+  revealTimelineChip(current);
+}
+
+// The tape is a horizontal strip at narrow widths, where a chip can sit outside
+// the visible run. Scroll the strip the smallest distance that brings the chip
+// back, and only the strip: the page must not move under a reader who is
+// watching the book.
+function revealTimelineChip(button) {
+  if (!button || eventList.scrollWidth <= eventList.clientWidth + 1) return;
+  const list = eventList.getBoundingClientRect();
+  const chip = button.getBoundingClientRect();
+  const inset = 12;
+  const left = list.left + inset;
+  const right = list.right - inset;
+  if (chip.left >= left && chip.right <= right) return;
+  eventList.scrollLeft += chip.left < left ? chip.left - left : chip.right - right;
 }
 
 function stopPlayback() {
@@ -782,6 +800,13 @@ playButton.addEventListener("click", () => {
   else stopPlayback();
 });
 stepSlider.addEventListener("input", () => setStep(Number(stepSlider.value)));
+
+// Chrome's own focus scroll leaves a chip in the strip half cut, so the strip is
+// scrolled here instead. Tabbing through the steps is how a keyboard reader
+// walks the run, and a chip they cannot read is a step they cannot pick.
+eventList.addEventListener("focusin", (event) => {
+  if (event.target instanceof HTMLElement) revealTimelineChip(event.target);
+});
 
 for (const button of scenarioButtons) {
   button.addEventListener("click", () => {

@@ -15,10 +15,19 @@ Before a fill that has a genuine choice in it, the page asks you to predict whic
 
 The transport sits above the workbench so stepping never needs a scroll to reach the control that steps.
 It is one row inside one card: the buttons, the slider, the step counter, and the keyboard hint at the far end.
+Below 660px it becomes two rows instead of three: the counter moves to the end of the slider row, and the hint is dropped, because a phone has no arrow keys and a third row of chrome is a third row the book is pushed down by.
 The current event is not repeated there.
 Between the tape's selected row, the selected card's title and its summary, a step is already stated three times, and the card's live region is what announces it.
 Below it, a rail on the left holds the event tape, what the selected event did, and the fills it produced, and the order book takes the rest of the width.
 Under 900px the rail dissolves and the page becomes one column in reading order: pick an event, read the book, then read what it did.
+
+Under 900px the tape also turns sideways into one scrolling row of chips.
+That is the difference between a tablet and a phone here.
+Stacked above the book, the tape sat between the buttons and the ladder and pushed the ladder 391px below the control that steps it at 390px wide, which is most of a phone screen away from the thing the buttons change.
+Sideways it is 96px instead of 194px, and the same distance is 249px, so the buttons, the steps and the whole ladder are on screen together at 844px tall and still at 667px.
+The strip scrolls itself the shortest distance that brings the current chip, or the focused one, back into view, and it never scrolls the page: the reader is watching the book, and the book must not move under them.
+Chrome's own focus scroll leaves a chip half cut in a horizontal scroller, so `focusin` on the tape does that scroll instead.
+The strip carries its own padding because a scroller clips an outline, and a keyboard reader losing the focus ring on the step they are about to pick is not a trade worth making for 8px.
 
 The selected and fills panels hold one height while the reader steps, and that height is measured rather than written down: `measureRailBoxes()` renders every step of the run once, keeps the tallest, and fixes the two boxes there, per run and per width.
 A run with no fills does not reserve room for two receipts, and a narrow column does not reserve what the text needs on a wide one.

@@ -1239,8 +1239,45 @@ input[type="range"] {
   .selected-panel { grid-area: selected; }
   .trades-panel { grid-area: trades; }
 
+  /* The tape turns on its side here. Above this width it is a column beside the
+     book, so a step and the graph are already side by side; below it the stack
+     sat between the buttons and the book and pushed the graph most of a phone
+     screen away from the control that steps it. Sideways it is one row, and the
+     buttons, the steps and the ladder are on screen at once.
+
+     The padding is for the focus ring, which the scroller would otherwise clip:
+     a 2px outline with a 2px offset needs 4px on every side. The negative
+     horizontal margin puts the first chip back on the panel's text edge. */
   .event-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    gap: 3px;
+    margin: 10px -4px 0;
+    padding: 5px 4px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .event-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .event-list > li {
+    flex: none;
+  }
+
+  /* Sized by its own label rather than by the row, because the row is now a
+     scroller and a chip that stretched would scroll forever. The height matches
+     the transport buttons, so the two rows of the band hit the same. */
+  .event-list .event-choice {
+    width: auto;
+    min-height: 32px;
+    padding: 5px 9px 5px 8px;
+    grid-template-columns: 20px max-content auto;
+  }
+
+  .event-list .event-label {
+    max-width: 150px;
   }
 
   .intro-copy {
@@ -1282,9 +1319,12 @@ input[type="range"] {
   }
 
   .progress-control {
-    flex: 1 1 100%;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 3px;
+    /* Two rows on a phone, not three: the slider keeps its label beside it and
+       the counter joins it at the end, which is where the reader looks after
+       dragging. The buttons keep a row of their own and fill it. */
+    flex: 1 1 150px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
   }
 
   .step-counter {
@@ -1404,14 +1444,17 @@ input[type="range"] {
     margin-top: 12px;
   }
 
-  /* Two event columns on a phone only fit if the row gives up some of its
-     chrome. A truncated price would be worse than a shorter label. */
-  .event-choice {
-    grid-template-columns: 17px minmax(0, 1fr) auto;
+  /* A phone fits about two of these at a time, so the chip gives up some of its
+     chrome. A truncated label would be worse than a shorter run of them. Both
+     selectors match the strip rules above, so these are the values that apply
+     at this width. */
+  .event-list .event-choice {
+    grid-template-columns: 17px max-content auto;
     gap: 7px;
   }
 
-  .event-label {
+  .event-list .event-label {
+    max-width: 104px;
     font-size: 12px;
   }
 }
